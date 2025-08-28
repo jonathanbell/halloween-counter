@@ -28,22 +28,11 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /* justify-content: center; */
+  margin-top: 7vh;
   align-items: center;
   position: relative;
-}
-
-.instructions {
-  position: fixed;
-  bottom: 1vh;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #666;
-  font-size: 1.5vh;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 0.5vh 2vh;
-  border-radius: 0.5vh;
-  z-index: 20;
+  z-index: 2;
 }
 
 /* Add fog effect */
@@ -91,17 +80,4 @@
   top: 0;
   right: 0;
   transform: rotate(90deg);
-}
-
-/* Fullscreen optimizations */
-:-webkit-full-screen .instructions {
-  display: none;
-}
-
-:-moz-full-screen .instructions {
-  display: none;
-}
-
-:fullscreen .instructions {
-  display: none;
 }

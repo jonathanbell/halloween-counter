@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Halloween Counter Settings</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+      text-align: center;
+      font-size: 28px;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      color: #555;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #4CAF50;
+      box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 30px;
+    }
+
+    button {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #666;
+    }
+
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+
+    .message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-top: 20px;
+      text-align: center;
+      font-weight: 500;
+      display: none;
+    }
+
+    .message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+
+    .current-values {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 25px;
+    }
+
+    .current-values h3 {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .current-values .value {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .current-values .value:last-child {
+      border-bottom: none;
+    }
+
+    .current-values .value span:first-child {
+      color: #666;
+    }
+
+    .current-values .value span:last-child {
+      font-weight: 600;
+      color: #333;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 30px 20px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎃 Halloween Counter Settings</h1>
+
+    <div class="current-values" id="currentValues">
+      <h3>Current Values</h3>
+      <div class="value">
+        <span>Current Count:</span>
+        <span id="currentCountDisplay">Loading...</span>
+      </div>
+      <div class="value">
+        <span>Initial Candy Count:</span>
+        <span id="initialCandyDisplay">Loading...</span>
+      </div>
+      <div class="value">
+        <span>Candy Remaining:</span>
+        <span id="candyRemainingDisplay">Loading...</span>
+      </div>
+    </div>
+
+    <form id="settingsForm">
+      <div class="form-group">
+        <label for="currentCount">Current Count</label>
+        <input
+          type="number"
+          id="currentCount"
+          name="currentCount"
+          min="0"
+          placeholder="Enter current visitor count"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="initialCandyCount">Initial Candy Count</label>
+        <input
+          type="number"
+          id="initialCandyCount"
+          name="initialCandyCount"
+          min="1"
+          placeholder="Enter total candy pieces"
+          required
+        >
+      </div>
+
+      <div class="button-group">
+        <button type="submit" class="btn-primary">Update Settings</button>
+      </div>
+    </form>
+
+    <div id="message" class="message"></div>
+  </div>
+
+  <script>
+    // Get current state on load
+    async function loadCurrentState() {
+      try {
+        const response = await fetch('/state');
+        const state = await response.json();
+
+        // Update display
+        document.getElementById('currentCountDisplay').textContent = state.currentCount;
+        document.getElementById('initialCandyDisplay').textContent = state.initialCandyCount;
+        document.getElementById('candyRemainingDisplay').textContent = state.candyRemaining;
+
+        // Set form values
+        document.getElementById('currentCount').value = state.currentCount;
+        document.getElementById('initialCandyCount').value = state.initialCandyCount;
+      } catch (error) {
+        console.error('Error loading current state:', error);
+        document.getElementById('currentCountDisplay').textContent = 'Error';
+        document.getElementById('initialCandyDisplay').textContent = 'Error';
+        document.getElementById('candyRemainingDisplay').textContent = 'Error';
+      }
+    }
+
+    // Load state on page load
+    loadCurrentState();
+
+    // Handle form submission
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const data = {
+        currentCount: parseInt(formData.get('currentCount')),
+        initialCandyCount: parseInt(formData.get('initialCandyCount'))
+      };
+
+      const messageEl = document.getElementById('message');
+
+      try {
+        const response = await fetch('/settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          messageEl.className = 'message success';
+          messageEl.textContent = 'Settings updated successfully!';
+
+          // Update current values display
+          document.getElementById('currentCountDisplay').textContent = result.state.currentCount;
+          document.getElementById('initialCandyDisplay').textContent = result.state.initialCandyCount;
+          document.getElementById('candyRemainingDisplay').textContent = result.state.candyRemaining;
+
+          // Clear message after 3 seconds
+          setTimeout(() => {
+            messageEl.className = 'message';
+            messageEl.textContent = '';
+          }, 3000);
+        } else {
+          throw new Error('Failed to update settings');
+        }
+      } catch (error) {
+        messageEl.className = 'message error';
+        messageEl.textContent = 'Error updating settings. Please try again.';
+        console.error('Error:', error);
+
+        // Clear message after 5 seconds
+        setTimeout(() => {
+          messageEl.className = 'message';
+          messageEl.textContent = '';
+        }, 5000);
+      }
+    });
+  </script>
+</body>
+</html>

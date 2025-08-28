@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import './Counter.css';
 
 interface CounterProps {
@@ -6,8 +6,11 @@ interface CounterProps {
   isAnimating: boolean;
 }
 
-export const Counter: React.FC<CounterProps> = ({ count, isAnimating }) => {
-  const digits = count.toString().padStart(3, '0').split('');
+export const Counter: React.FC<CounterProps> = React.memo(({ count, isAnimating }) => {
+  const digits = useMemo(() => 
+    count.toString().padStart(3, '0').split(''),
+    [count]
+  );
 
   return (
     <div className="counter-container">
@@ -23,4 +26,4 @@ export const Counter: React.FC<CounterProps> = ({ count, isAnimating }) => {
       </div>
     </div>
   );
-};
+});

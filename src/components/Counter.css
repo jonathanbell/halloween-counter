@@ -2,13 +2,13 @@
   text-align: center;
   position: relative;
   z-index: 10;
-  margin: 2vh 0;
+  margin: 1vh 0 2vh 0;
 }
 
 .counter-label {
-  font-size: 5vh;
+  font-size: 9vh;
   color: #ff6b35;
-  text-shadow: 
+  text-shadow:
     3px 3px 0px #000,
     -1px -1px 0px #000,
     1px -1px 0px #000,
@@ -33,7 +33,7 @@
   height: 20vh;
   position: relative;
   overflow: hidden;
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(255, 107, 53, 0.5),
     inset 0 0 20px rgba(0, 0, 0, 0.5);
 }
@@ -42,7 +42,7 @@
   font-size: 18vh;
   line-height: 20vh;
   color: #ffd700;
-  text-shadow: 
+  text-shadow:
     0 0 10px rgba(255, 215, 0, 0.8),
     0 0 20px rgba(255, 107, 53, 0.5);
   font-weight: bold;
@@ -73,12 +73,12 @@
 
 @keyframes glow {
   0%, 100% {
-    box-shadow: 
+    box-shadow:
       0 0 20px rgba(255, 107, 53, 0.5),
       inset 0 0 20px rgba(0, 0, 0, 0.5);
   }
   50% {
-    box-shadow: 
+    box-shadow:
       0 0 40px rgba(255, 107, 53, 1),
       0 0 60px rgba(255, 215, 0, 0.5),
       inset 0 0 20px rgba(255, 107, 53, 0.3);

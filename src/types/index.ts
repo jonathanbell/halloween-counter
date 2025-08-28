@@ -6,9 +6,8 @@ export interface CounterState {
 }
 
 export interface StatsData {
-  trickOrTreatersPerHour: number;
-  averageTimeBetween: number;
-  estimatedCandyDepletion: string;
+  candiesGivenPastFiveMinutes: number | null;
+  averageTimeBetween: number; // in seconds
   candyDepletionRate: number;
   startTime: number;
   timestamps: number[];
@@ -21,8 +20,10 @@ export interface QueryParams {
 
 export interface ZombieInstance {
   id: string;
+  number: number;
   position: number;
   speed: number;
   scale: number;
   yOffset: number;
+  spawnTime: number; // timestamp when zombie was created
 }

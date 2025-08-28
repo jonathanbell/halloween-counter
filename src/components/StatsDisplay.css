@@ -1,57 +1,44 @@
 .stats-container {
-  position: fixed;
-  top: 2vh;
-  right: 2vw;
-  background: rgba(26, 26, 26, 0.95);
-  border: 2px solid #8b4513;
+  display: flex;
+  justify-content: center;
+  gap: 4vw;
+  margin: 0 auto;
+  padding: 1vh 2vw;
+  background: rgba(26, 26, 26, 0.8);
   border-radius: 1vh;
-  padding: 2vh;
-  min-width: 250px;
-  box-shadow: 
-    0 0 20px rgba(139, 69, 19, 0.3),
-    inset 0 0 10px rgba(0, 0, 0, 0.5);
-  z-index: 15;
-}
-
-.stats-title {
-  font-size: 2.5vh;
-  color: #ff6b35;
-  text-align: center;
-  margin: 0 0 1.5vh 0;
-  font-family: 'Creepster', cursive;
-  text-shadow: 
-    2px 2px 0px #000,
-    0 0 10px rgba(255, 107, 53, 0.5);
+  max-width: fit-content;
+  position: relative;
+  z-index: 5;
 }
 
 .stat-item {
   display: flex;
   align-items: center;
-  margin: 1vh 0;
-  font-size: 2vh;
+  font-size: 2.2vh;
   color: #ffd700;
-  gap: 0.5vw;
+  gap: 0.8vw;
 }
 
 .stat-icon {
-  font-size: 2.2vh;
+  font-size: 2.5vh;
   filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.5));
 }
 
 .stat-label {
-  flex: 1;
   color: #b8b8b8;
   text-shadow: 1px 1px 0px #000;
+  white-space: nowrap;
 }
 
 .stat-value {
   font-weight: bold;
   color: #ffd700;
-  text-shadow: 
+  text-shadow:
     1px 1px 0px #000,
     0 0 5px rgba(255, 215, 0, 0.3);
   font-family: 'Digital-7', monospace;
-  font-size: 2.2vh;
+  font-size: 2.5vh;
+  white-space: nowrap;
 }
 
 .stat-value.highlight {
@@ -70,8 +57,19 @@
 
 @media (max-width: 768px) {
   .stats-container {
-    position: static;
-    margin: 2vh auto;
-    width: 90%;
+    gap: 2vw;
+    font-size: 1.8vh;
+  }
+
+  .stat-item {
+    font-size: 1.8vh;
+  }
+
+  .stat-icon {
+    font-size: 2vh;
+  }
+
+  .stat-value {
+    font-size: 2vh;
   }
 }

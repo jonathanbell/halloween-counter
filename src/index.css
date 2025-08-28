@@ -1,14 +1,10 @@
-@font-face {
-  font-family: 'Digital-7';
-  src: url('https://fonts.cdnfonts.com/s/13853/digital-7.woff') format('woff');
-  font-display: swap;
-}
+/* Digital-7 font removed - using monospace fallback */
 
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

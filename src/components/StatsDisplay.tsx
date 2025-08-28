@@ -6,22 +6,36 @@ interface StatsDisplayProps {
   stats: StatsData;
 }
 
-export const StatsDisplay: React.FC<StatsDisplayProps> = ({ stats }) => {
+export const StatsDisplay: React.FC<StatsDisplayProps> = React.memo(({ stats }) => {
+  // Format time in fuzzy increments
+  const formatFuzzyTime = (seconds: number): string => {
+    if (seconds <= 0) return 'N/A';
+    
+    if (seconds < 60) {
+      // Round to nearest 5 seconds
+      const rounded = Math.round(seconds / 5) * 5;
+      return `~${rounded || 5} seconds`;
+    } else {
+      // Convert to minutes
+      const minutes = Math.round(seconds / 60);
+      return minutes === 1 ? '~1 min' : `~${minutes} mins`;
+    }
+  };
+  
   return (
     <div className="stats-container">
-      <h3 className="stats-title">📊 Spooky Stats 📊</h3>
-      
       <div className="stat-item">
         <span className="stat-icon">👻</span>
-        <span className="stat-label">Per Hour:</span>
-        <span className="stat-value">{stats.trickOrTreatersPerHour}</span>
+        {/* <span className="stat-icon">🧟‍♂️</span> */}
+        <span className="stat-label">Candy Output (past 5 mins):</span>
+        <span className="stat-value">{stats.candiesGivenPastFiveMinutes !== null ? stats.candiesGivenPastFiveMinutes : 'N/A'}</span>
       </div>
 
       <div className="stat-item">
         <span className="stat-icon">⏱️</span>
-        <span className="stat-label">Avg Wait:</span>
+        <span className="stat-label">Average Wait:</span>
         <span className="stat-value">
-          {stats.averageTimeBetween > 0 ? `${stats.averageTimeBetween} min` : 'N/A'}
+          {formatFuzzyTime(stats.averageTimeBetween)}
         </span>
       </div>
 
@@ -30,12 +44,6 @@ export const StatsDisplay: React.FC<StatsDisplayProps> = ({ stats }) => {
         <span className="stat-label">Depletion Rate:</span>
         <span className="stat-value">{stats.candyDepletionRate}/hr</span>
       </div>
-
-      <div className="stat-item">
-        <span className="stat-icon">⏰</span>
-        <span className="stat-label">Time Left:</span>
-        <span className="stat-value highlight">{stats.estimatedCandyDepletion}</span>
-      </div>
     </div>
   );
-};
+});

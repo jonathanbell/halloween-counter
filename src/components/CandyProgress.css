@@ -46,6 +46,7 @@
   transition: width 0.5s ease, background 0.5s ease;
   position: relative;
   border-radius: 2vh 0 0 2vh;
+  overflow: hidden;
 }
 
 .progress-bar-inner.green {
@@ -130,7 +131,7 @@
 
 .candy-icon {
   transition: all 0.3s;
-  filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
 }
 
 .candy-icon.depleted {

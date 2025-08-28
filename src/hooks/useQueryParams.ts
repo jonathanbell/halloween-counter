@@ -1,21 +1,15 @@
-import { useEffect, useState } from 'react';
 import type { QueryParams } from '../types';
 
 export const useQueryParams = (): QueryParams => {
-  const [params, setParams] = useState<QueryParams>({});
-
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentCount = urlParams.get('currentCount');
-    const initialCandyCount = urlParams.get('initialCandyCount');
-
-    setParams({
-      currentCount: currentCount ? parseInt(currentCount, 10) : undefined,
-      initialCandyCount: initialCandyCount ? parseInt(initialCandyCount, 10) : undefined,
-    });
-  }, []);
-
-  return params;
+  // Read directly from URL - no need for state since manual URL changes reload the page
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentCount = urlParams.get('currentCount');
+  const initialCandyCount = urlParams.get('initialCandyCount');
+  
+  return {
+    currentCount: currentCount ? parseInt(currentCount, 10) : undefined,
+    initialCandyCount: initialCandyCount ? parseInt(initialCandyCount, 10) : undefined,
+  };
 };
 
 export const updateURLParam = (key: string, value: string | number): void => {

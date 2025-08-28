@@ -1,0 +1,114 @@
+.drooling-rain-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.drooling-emoji {
+  position: absolute;
+  top: -100px;
+  animation: droolFall linear forwards;
+  filter: drop-shadow(0 0 10px rgba(255, 200, 0, 0.5));
+  will-change: transform;
+  opacity: 0; /* Start invisible */
+}
+
+@keyframes droolFall {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg) scale(1);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  25% {
+    transform: translateY(25vh) translateX(calc(var(--sway-amount) * -1)) rotate(90deg) scale(1.1);
+  }
+
+  50% {
+    transform: translateY(50vh) translateX(var(--sway-amount)) rotate(180deg) scale(0.9);
+  }
+
+  75% {
+    transform: translateY(75vh) translateX(calc(var(--sway-amount) * -0.5)) rotate(270deg) scale(1.05);
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: translateY(calc(100vh + 100px)) translateX(calc(var(--sway-amount) * 0.8)) rotate(360deg) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Add some variety with alternating animations */
+.drooling-emoji:nth-child(even) {
+  animation-name: droolFallAlt;
+}
+
+@keyframes droolFallAlt {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg) scale(1);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  25% {
+    transform: translateY(25vh) translateX(var(--sway-amount)) rotate(-90deg) scale(0.95);
+  }
+
+  50% {
+    transform: translateY(50vh) translateX(calc(var(--sway-amount) * -1)) rotate(-180deg) scale(1.1);
+  }
+
+  75% {
+    transform: translateY(75vh) translateX(calc(var(--sway-amount) * 0.7)) rotate(-270deg) scale(0.95);
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: translateY(calc(100vh + 100px)) translateX(calc(var(--sway-amount) * -0.5)) rotate(-360deg) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .drooling-emoji {
+    animation: simpleFall linear forwards;
+  }
+
+  @keyframes simpleFall {
+    0% {
+      transform: translateY(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(calc(100vh + 100px));
+      opacity: 0;
+    }
+  }
+}
