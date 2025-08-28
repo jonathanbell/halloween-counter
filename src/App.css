@@ -1,0 +1,107 @@
+.app {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #1a0033 0%, #2d1b69 50%, #000000 100%);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  cursor: none;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.instructions {
+  position: fixed;
+  bottom: 2vh;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: min(2vh, 1vw);
+  font-family: Arial, sans-serif;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.instructions p {
+  margin: 0.5vh 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Hide instructions in fullscreen after 10 seconds */
+.app:fullscreen .instructions {
+  animation: fadeOut 1s ease-in-out 10s forwards;
+}
+
+@keyframes fadeOut {
+  from { opacity: 0.8; }
+  to { opacity: 0; }
+}
+
+/* Fullscreen optimizations */
+.app:fullscreen {
+  cursor: none;
+}
+
+.app:fullscreen .instructions {
+  font-size: min(1.5vh, 0.8vw);
+}
+
+/* Hide scrollbars */
+.app::-webkit-scrollbar {
+  display: none;
+}
+
+.app {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Prevent text selection */
+.app {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Performance optimizations */
+.app * {
+  box-sizing: border-box;
+}
+
+.main-content {
+  will-change: transform;
+}
+
+/* Responsive adjustments for different aspect ratios */
+@media screen and (max-aspect-ratio: 4/3) {
+  .instructions {
+    bottom: 1vh;
+    font-size: min(1.8vh, 1.2vw);
+  }
+}
+
+@media screen and (min-aspect-ratio: 21/9) {
+  .instructions {
+    font-size: min(2.5vh, 0.8vw);
+  }
+}
+
+/* Hide instructions on very small screens */
+@media screen and (max-height: 500px) {
+  .instructions {
+    opacity: 0.3;
+    font-size: min(1.2vh, 0.8vw);
+  }
+}

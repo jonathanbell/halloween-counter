@@ -1,0 +1,163 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.container {
+  background: linear-gradient(135deg, #2d1b69 0%, #8a2be2 50%, #ff6b35 100%);
+  border: 4px solid #000;
+  border-radius: 20px;
+  padding: 4vh 4vw;
+  max-width: 80vw;
+  max-height: 80vh;
+  text-align: center;
+  box-shadow: 0 0 50px rgba(255, 107, 53, 0.5);
+}
+
+.title {
+  font-size: min(6vh, 4vw);
+  font-weight: bold;
+  color: #ffffff;
+  text-shadow: 
+    -2px -2px 0 #000,  
+    2px -2px 0 #000,
+    -2px 2px 0 #000,
+    2px 2px 0 #000;
+  margin-bottom: 3vh;
+  font-family: 'Arial Black', Arial, sans-serif;
+}
+
+.mainStats {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 3vh;
+  flex-wrap: wrap;
+  gap: 2vh;
+}
+
+.statItem {
+  flex: 1;
+  min-width: 200px;
+}
+
+.statValue {
+  font-size: min(8vh, 6vw);
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 
+    -3px -3px 0 #000,  
+    3px -3px 0 #000,
+    -3px 3px 0 #000,
+    3px 3px 0 #000,
+    0 0 20px #ff6b35;
+  font-family: 'Arial Black', Arial, sans-serif;
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: min(3vh, 2vw);
+  font-weight: bold;
+  color: #ffcc00;
+  text-shadow: 
+    -1px -1px 0 #000,  
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000;
+  margin-top: 1vh;
+  font-family: Arial, sans-serif;
+}
+
+.hourlyBreakdown {
+  margin-top: 3vh;
+  padding-top: 2vh;
+  border-top: 2px solid #ffcc00;
+}
+
+.breakdownTitle {
+  font-size: min(4vh, 2.5vw);
+  font-weight: bold;
+  color: #ffcc00;
+  text-shadow: 
+    -2px -2px 0 #000,  
+    2px -2px 0 #000,
+    -2px 2px 0 #000,
+    2px 2px 0 #000;
+  margin-bottom: 2vh;
+  font-family: 'Arial Black', Arial, sans-serif;
+}
+
+.hourlyList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1vh 2vw;
+  max-height: 20vh;
+  overflow-y: auto;
+}
+
+.hourlyItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.5vh 1vw;
+  border-radius: 8px;
+  font-size: min(2.5vh, 1.5vw);
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.hourTime {
+  color: #ffcc00;
+}
+
+.hourCount {
+  color: #ff6b35;
+}
+
+.closeHint {
+  margin-top: 3vh;
+  font-size: min(2.5vh, 1.5vw);
+  color: #cccccc;
+  font-style: italic;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Responsive adjustments */
+@media screen and (max-aspect-ratio: 4/3) {
+  .container {
+    padding: 3vh 3vw;
+    max-width: 90vw;
+  }
+  
+  .mainStats {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .hourlyList {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  }
+}
+
+@media screen and (min-aspect-ratio: 21/9) {
+  .mainStats {
+    gap: 4vh;
+  }
+  
+  .hourlyList {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}

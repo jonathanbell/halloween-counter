@@ -1,19 +1,22 @@
 # Halloween Trick-or-Treater Counter - Project Requirements
 
 ## Project Overview
+
 Create a Vite/React single-page application that will be projected onto a garage door on Halloween night via HDMI projector. The app will count trick-or-treaters with fun, spooky animations and be easily viewable from a distance.
 
 ## Core Functionality
 
 ### Counter System
+
 - Display format: "Trick-or-Treaters: [NUMBER]"
 - **Increment trigger**: Spacebar press (initially), with future support for Bluetooth camera trigger
-- **Initial count**: 
+- **Initial count**:
   - Default to 0 if no query parameter present
   - Use `currentCount` query parameter value if provided (e.g., `?currentCount=15`)
 - Counter should be the primary visual focus with large, highly visible text
 
 ### Statistics Display
+
 - Track trick-or-treaters per hour
 - Display statistics periodically based on a configurable threshold
 - **Stats trigger**: Show stats after every N trick-or-treaters
@@ -25,16 +28,19 @@ Create a Vite/React single-page application that will be projected onto a garage
 ## Visual Design
 
 ### Typography
+
 - **Extra large text** for main counter (minimum 10vh, consider 15-20vh)
 - Bold, easily readable font that's visible when projected on white surface
 - Consider adding text stroke or shadow for better visibility
 
 ### Color Palette
+
 - Halloween themed: Orange, Purple, Black, White
 - Ensure high contrast for projection visibility
 - White or light-colored text with dark outlines recommended
 
 ### Animations & Effects (using Rive)
+
 - **Triggered on increment**:
   - Counter number should animate (scale up/bounce effect)
   - Spawn random spooky elements that float/fly across screen
@@ -45,6 +51,7 @@ Create a Vite/React single-page application that will be projected onto a garage
   - Keep animations smooth but not overwhelming
 
 ### Halloween Elements to Include
+
 - Pumpkins/Jack-o'-lanterns
 - Ghosts (floating, semi-transparent)
 - Bats (flying across screen)
@@ -54,14 +61,16 @@ Create a Vite/React single-page application that will be projected onto a garage
 ## Technical Requirements
 
 ### Stack
+
 - **Build tool**: Vite
 - **Framework**: React
-- **Animation library**: Rive (https://rive.app/)
+- **Animation library**: Rive (<https://rive.app/>)
   - Use @rive-app/react-canvas package
   - Create or source Halloween-themed Rive animations
 - **Styling**: CSS Modules or styled-components for maintainability
 
 ### Project Structure
+
 ```
 src/
   components/
@@ -84,6 +93,7 @@ src/
 ### Key Features to Implement
 
 1. **URL Parameter Handling**
+
    ```javascript
    // Parse and handle query parameters
    const params = new URLSearchParams(window.location.search);
@@ -115,6 +125,7 @@ src/
    - Clean up completed animations to prevent memory leaks
 
 ## Future Enhancements (to consider in architecture)
+
 - Bluetooth trigger integration via Web Bluetooth API
 - Data persistence to localStorage or external service
 - Daily/hourly statistics graphs
@@ -126,8 +137,10 @@ src/
 ## Development Guidelines
 
 ### Getting Started
+
 1. Initialize Vite project with React template
 2. Install dependencies:
+
    ```bash
    npm create vite@latest halloween-counter -- --template react
    cd halloween-counter
@@ -140,6 +153,7 @@ src/
    - Export as .riv files
 
 ### Testing Considerations
+
 - Test with different starting counts via query parameters
 - Verify visibility at different distances
 - Test fullscreen mode in different browsers
@@ -147,17 +161,20 @@ src/
 - Test on actual projector if possible before Halloween
 
 ### Browser Compatibility
+
 - Target modern browsers (Chrome, Firefox, Edge)
 - Ensure fullscreen API support
 - Test keyboard event handling
 
 ## Delivery
+
 - Single-page application that runs locally
 - No backend required
 - All assets bundled with build
 - Simple to deploy (npm run build → serve dist folder)
 
 ## Success Criteria
+
 - Counter clearly visible from street distance when projected
 - Smooth animations that enhance but don't distract
 - Reliable counting mechanism
@@ -165,11 +182,20 @@ src/
 - Easy to operate on Halloween night (just spacebar!)
 - Query parameters work for resuming count and configuring stats interval
 
+## Rive Considerations
+
+Guide the developer(s) through the Rive implementation via code comments and suggestions since they have never implemented Rive before.
+
+## Documentation
+
+Create documentation as we go: README.md with technical installation and development instructions. Explain any Rive usage issues here too. Add other documentation as needed for clarity.
+
 ---
 
 ## Implementation Notes for AI/Claude Code
 
 When implementing this project:
+
 1. Start with basic counter functionality
 2. Add URL parameter handling
 3. Implement Rive animations incrementally

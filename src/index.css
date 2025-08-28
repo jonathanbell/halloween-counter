@@ -1,0 +1,103 @@
+/* Global reset and Halloween theme */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Halloween color palette */
+  --halloween-orange: #ff6b35;
+  --halloween-purple: #8a2be2;
+  --halloween-dark-purple: #2d1b69;
+  --halloween-black: #000000;
+  --halloween-white: #ffffff;
+  --halloween-gold: #ffcc00;
+  --halloween-dark-bg: #1a0033;
+  
+  font-family: 'Arial Black', Arial, sans-serif;
+  line-height: 1.2;
+  font-weight: 900;
+
+  color-scheme: dark;
+  color: var(--halloween-white);
+  background-color: var(--halloween-black);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  background: var(--halloween-black);
+}
+
+body {
+  display: block;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* Disable default focus outlines since we're hiding cursor */
+*:focus {
+  outline: none;
+}
+
+/* Ensure smooth animations */
+* {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+  perspective: 1000px;
+}
+
+/* Optimize for projection display */
+body {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Prevent zoom on mobile devices */
+body {
+  touch-action: manipulation;
+  -ms-content-zooming: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Performance optimizations for animations */
+.animate {
+  will-change: transform, opacity;
+}
+
+/* Hide any default button styling if we need buttons later */
+button {
+  background: none;
+  border: none;
+  outline: none;
+  cursor: none;
+}
+
+/* Ensure fullscreen works properly */
+html:fullscreen,
+html:-webkit-full-screen,
+html:-moz-full-screen {
+  background: var(--halloween-black);
+  width: 100%;
+  height: 100%;
+}
+
+/* Remove any default margins that might interfere */
+h1, h2, h3, h4, h5, h6, p {
+  margin: 0;
+  padding: 0;
+}
