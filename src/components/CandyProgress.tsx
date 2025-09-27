@@ -27,13 +27,13 @@ export const CandyProgress: React.FC<CandyProgressProps> = React.memo(({ candyRe
   );
 
   return (
-    <div className="candy-progress-container">
+    <div className={`candy-progress-container ${isEmpty ? 'empty' : ''}`}>
       <div className="candy-header">
         <span className="candy-title">🍬 Candy Supply 🍬</span>
         <span className="candy-count">{candyRemaining} / {initialCandyCount}</span>
       </div>
 
-      <div className="progress-bar-outer">
+      <div className={`progress-bar-outer ${isEmpty ? 'empty' : ''}`}>
         <div
           className={`progress-bar-inner ${colorClass} ${isCritical ? 'critical' : ''} ${isEmpty ? 'empty' : ''}`}
           style={{ width: `${Math.max(0, percentage)}%` }}

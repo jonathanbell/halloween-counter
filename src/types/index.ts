@@ -7,7 +7,7 @@ export interface CounterState {
 
 export interface StatsData {
   candiesGivenPastFiveMinutes: number | null;
-  averageTimeBetween: number; // in seconds
+  averageTimeBetween: number;
   candyDepletionRate: number;
   startTime: number;
   timestamps: number[];
@@ -25,5 +25,5 @@ export interface ZombieInstance {
   speed: number;
   scale: number;
   yOffset: number;
-  spawnTime: number; // timestamp when zombie was created
+  spawnTime: number;
 }

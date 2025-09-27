@@ -4,7 +4,6 @@ import type { ZombieInstance } from '../types';
 import './ZombieHorde.css';
 
 interface ZombieHordeProps {
-  triggerAnimation: boolean;
   currentCount: number;
   candyRemaining?: number;
 }

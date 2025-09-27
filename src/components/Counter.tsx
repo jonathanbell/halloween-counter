@@ -4,9 +4,10 @@ import './Counter.css';
 interface CounterProps {
   count: number;
   isAnimating: boolean;
+  isOutOfCandy?: boolean;
 }
 
-export const Counter: React.FC<CounterProps> = React.memo(({ count, isAnimating }) => {
+export const Counter: React.FC<CounterProps> = React.memo(({ count, isAnimating, isOutOfCandy = false }) => {
   const digits = useMemo(() => 
     count.toString().padStart(3, '0').split(''),
     [count]
@@ -14,7 +15,7 @@ export const Counter: React.FC<CounterProps> = React.memo(({ count, isAnimating 
 
   return (
     <div className="counter-container">
-      <div className="counter-label">Now serving customer number:</div>
+      <div className={`counter-label ${isOutOfCandy ? 'out-of-candy' : ''}`}>Now serving customer number:</div>
       <div className={`counter-display ${isAnimating ? 'animating' : ''}`}>
         {digits.map((digit, index) => (
           <div key={index} className="digit-container">

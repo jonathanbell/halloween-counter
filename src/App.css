@@ -28,7 +28,6 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  /* justify-content: center; */
   margin-top: 7vh;
   align-items: center;
   position: relative;
@@ -61,23 +60,3 @@
   }
 }
 
-/* Spider web decorations */
-.spider-web {
-  position: absolute;
-  width: 150px;
-  height: 150px;
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-.spider-web.top-left {
-  top: 0;
-  left: 0;
-  transform: rotate(0deg);
-}
-
-.spider-web.top-right {
-  top: 0;
-  right: 0;
-  transform: rotate(90deg);
-}

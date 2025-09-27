@@ -17,6 +17,37 @@
   font-weight: bold;
   margin-bottom: 2vh;
   font-family: 'Creepster', cursive;
+  position: relative;
+  transition: opacity 0.5s ease;
+}
+
+.counter-label.out-of-candy {
+  opacity: 0.5;
+}
+
+.counter-label.out-of-candy::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 0.5vh;
+  background: #ff0000;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+  animation: strikethrough-grow 0.5s ease-out forwards;
+}
+
+@keyframes strikethrough-grow {
+  from {
+    width: 0;
+    left: 50%;
+    right: 50%;
+  }
+  to {
+    width: 100%;
+    left: 0;
+    right: 0;
+  }
 }
 
 .counter-display {

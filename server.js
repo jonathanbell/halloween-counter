@@ -104,19 +104,16 @@ const server = http.createServer((req, res) => {
     sseClients.add(res);
     console.log(`\x1b[32m✓\x1b[0m Client connected | Total: \x1b[1m${sseClients.size}\x1b[0m`);
     
-    // Remove client on disconnect
-    req.on('close', () => {
-      sseClients.delete(res);
-      console.log(`\x1b[31m✗\x1b[0m Client disconnected | Total: \x1b[1m${sseClients.size}\x1b[0m`);
-    });
-    
     // Keep connection alive
     const keepAlive = setInterval(() => {
       res.write(':ping\n\n');
     }, 30000);
-    
+
+    // Remove client on disconnect
     req.on('close', () => {
+      sseClients.delete(res);
       clearInterval(keepAlive);
+      console.log(`\x1b[31m✗\x1b[0m Client disconnected | Total: \x1b[1m${sseClients.size}\x1b[0m`);
     });
     
     return;
@@ -233,7 +230,7 @@ async function getLocalIP() {
         }
       }
     }
-  } catch (e) {
+  } catch {
     return 'your-ip';
   }
   return 'your-ip';

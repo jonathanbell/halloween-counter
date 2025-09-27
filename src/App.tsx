@@ -29,15 +29,12 @@ function App() {
     }
   }, [counter.isConnected, counter.connectionError]);
 
-  // Unified keyboard shortcuts handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+R: Reset counter
       if (e.key === 'r' && e.ctrlKey) {
         e.preventDefault();
         counter.reset();
       }
-      // Ctrl+F: Toggle fullscreen
       if (e.key === 'f' && e.ctrlKey) {
         e.preventDefault();
         if (!document.fullscreenElement) {
@@ -49,7 +46,6 @@ function App() {
     };
 
     const handleKeyPress = (e: KeyboardEvent) => {
-      // Space: Increment counter
       if (e.code === 'Space') {
         e.preventDefault();
         counter.increment();
@@ -69,10 +65,10 @@ function App() {
     <div className="app">
       <LightningCanvas triggerOnIncrement={counter.isAnimating} />
       <div className="main-content">
-        {/* <img src="/kscb.png" alt="KSCB Logo" style={{ width: 120, marginBottom: 16 }} /> */}
         <Counter
           count={counter.currentCount}
           isAnimating={counter.isAnimating}
+          isOutOfCandy={counter.candyRemaining === 0}
         />
 
         <CandyProgress
@@ -83,12 +79,11 @@ function App() {
         <StatsDisplay stats={stats} />
 
         <ZombieHorde
-          triggerAnimation={counter.isAnimating}
           currentCount={counter.currentCount}
           candyRemaining={counter.candyRemaining}
         />
 
-        <DroolingRain />
+        <DroolingRain isActive={counter.candyRemaining > 0} />
       </div>
 
     </div>

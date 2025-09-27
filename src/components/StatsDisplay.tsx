@@ -26,7 +26,6 @@ export const StatsDisplay: React.FC<StatsDisplayProps> = React.memo(({ stats }) 
     <div className="stats-container">
       <div className="stat-item">
         <span className="stat-icon">👻</span>
-        {/* <span className="stat-icon">🧟‍♂️</span> */}
         <span className="stat-label">Candy Output (past 5 mins):</span>
         <span className="stat-value">{stats.candiesGivenPastFiveMinutes !== null ? stats.candiesGivenPastFiveMinutes : 'N/A'}</span>
       </div>

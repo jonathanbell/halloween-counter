@@ -10,7 +10,11 @@ interface Emoji {
   swayAmount: number;
 }
 
-export const DroolingRain = memo(() => {
+interface DroolingRainProps {
+  isActive?: boolean;
+}
+
+export const DroolingRain = memo(({ isActive = true }: DroolingRainProps) => {
   const [emojis, setEmojis] = useState<Emoji[]>([]);
   const nextIdRef = useRef(0);
   const lastRainRef = useRef(0);
@@ -41,6 +45,12 @@ export const DroolingRain = memo(() => {
   };
 
   useEffect(() => {
+    if (!isActive) {
+      // Clear all emojis when not active
+      setEmojis([]);
+      return;
+    }
+
     // Initial rain after a longer delay
     const initialTimeout = setTimeout(() => {
       createEmojiWave();
@@ -68,7 +78,7 @@ export const DroolingRain = memo(() => {
       clearTimeout(initialTimeout);
       clearInterval(interval);
     };
-  }, []);
+  }, [isActive]);
 
   return (
     <div className="drooling-rain-container" aria-hidden="true">
