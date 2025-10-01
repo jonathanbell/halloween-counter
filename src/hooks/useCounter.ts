@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { CounterState } from '../types';
 import { useSSE } from './useSSE';
 
@@ -15,6 +15,20 @@ export const useCounter = () => {
   });
   
   const [isAnimating, setIsAnimating] = useState(false);
+  const prevCountRef = useRef<number | null>(null);
+  const animationTimeoutRef = useRef<number | null>(null);
+  const pendingLocalUpdatesRef = useRef(0);
+
+  const triggerAnimation = useCallback(() => {
+    setIsAnimating(true);
+    if (animationTimeoutRef.current) {
+      window.clearTimeout(animationTimeoutRef.current);
+    }
+    animationTimeoutRef.current = window.setTimeout(() => {
+      setIsAnimating(false);
+      animationTimeoutRef.current = null;
+    }, 600);
+  }, []);
   
   // Sync local state with SSE state
   useEffect(() => {
@@ -25,8 +39,28 @@ export const useCounter = () => {
         candyRemaining: sseState.candyRemaining,
         initialCandyCount: sseState.initialCandyCount,
       }));
+
+      if (prevCountRef.current !== null && sseState.currentCount > prevCountRef.current) {
+        const delta = sseState.currentCount - prevCountRef.current;
+        const pendingLocal = pendingLocalUpdatesRef.current;
+
+        if (pendingLocal > 0) {
+          if (delta >= pendingLocal) {
+            pendingLocalUpdatesRef.current = 0;
+            if (delta > pendingLocal) {
+              triggerAnimation();
+            }
+          } else {
+            pendingLocalUpdatesRef.current = pendingLocal - delta;
+          }
+        } else {
+          triggerAnimation();
+        }
+      }
+
+      prevCountRef.current = sseState.currentCount;
     }
-  }, [sseState]);
+  }, [sseState, triggerAnimation]);
   
   // Log connection status
   useEffect(() => {
@@ -44,10 +78,9 @@ export const useCounter = () => {
       currentCount: prev.currentCount + 1,
       candyRemaining: Math.max(0, prev.candyRemaining - prev.candyPerChild),
     }));
-    
-    setIsAnimating(true);
-    setTimeout(() => setIsAnimating(false), 600);
-    
+    pendingLocalUpdatesRef.current += 1;
+    triggerAnimation();
+
     try {
       // Send increment request to server
       const response = await fetch('/increment', {
@@ -73,8 +106,19 @@ export const useCounter = () => {
           candyRemaining: sseState.candyRemaining,
         }));
       }
+      if (pendingLocalUpdatesRef.current > 0) {
+        pendingLocalUpdatesRef.current = Math.max(0, pendingLocalUpdatesRef.current - 1);
+      }
     }
-  }, [sseState]);
+  }, [sseState, triggerAnimation]);
+
+  useEffect(() => {
+    return () => {
+      if (animationTimeoutRef.current) {
+        window.clearTimeout(animationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const reset = useCallback(() => {
     if (window.confirm('Are you sure you want to reset the counter?')) {

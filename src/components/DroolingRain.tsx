@@ -54,14 +54,14 @@ export const DroolingRain = memo(({ isActive = true }: DroolingRainProps) => {
     // Initial rain after a longer delay
     const initialTimeout = setTimeout(() => {
       createEmojiWave();
-    }, 5000 + Math.random() * 10000);
+    }, 8000 + Math.random() * 12000);
 
     // Random rain intervals
     const checkForRain = () => {
       const now = Date.now();
       const timeSinceLastRain = now - lastRainRef.current;
-      const minInterval = 20000; // 20 seconds minimum between rains
-      const maxInterval = 50000; // 50 seconds maximum
+      const minInterval = 40000; // 40 seconds minimum between rains
+      const maxInterval = 120000; // 120 seconds maximum
 
       if (timeSinceLastRain > minInterval) {
         const probability = (timeSinceLastRain - minInterval) / (maxInterval - minInterval);
