@@ -6,14 +6,14 @@
 }
 
 .counter-label {
-  font-size: 9vh;
-  color: #ff6b35;
+  font-size: 13vh;
+  color: #f5f0e6;
   text-shadow:
     3px 3px 0px #000,
     -1px -1px 0px #000,
     1px -1px 0px #000,
     -1px 1px 0px #000,
-    0 0 30px rgba(255, 107, 53, 0.8);
+    0 0 30px rgba(245, 240, 230, 0.8);
   font-weight: bold;
   margin-bottom: 2vh;
   font-family: 'Creepster', cursive;

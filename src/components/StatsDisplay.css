@@ -14,13 +14,13 @@
 .stat-item {
   display: flex;
   align-items: center;
-  font-size: 2.2vh;
+  font-size: 3vh;
   color: #ffd700;
   gap: 0.8vw;
 }
 
 .stat-icon {
-  font-size: 2.5vh;
+  font-size: 3.5vh;
   filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.5));
 }
 
@@ -37,7 +37,7 @@
     1px 1px 0px #000,
     0 0 5px rgba(255, 215, 0, 0.3);
   font-family: 'Digital-7', monospace;
-  font-size: 2.5vh;
+  font-size: 3.5vh;
   white-space: nowrap;
 }
 

@@ -2,7 +2,7 @@
   position: relative;
   width: 80%;
   max-width: 800px;
-  margin: 3vh auto;
+  margin: 1vh auto 3vh auto;
   z-index: 10;
   transition: all 0.5s ease;
 }
@@ -17,7 +17,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1vh;
-  font-size: 3vh;
+  font-size: 3.5vh;
   color: #ffd700;
   text-shadow:
     2px 2px 0px #000,
@@ -27,6 +27,14 @@
 
 .candy-title {
   font-family: 'Creepster', cursive;
+  font-size: 7vh;
+  color: #ff6b35;
+  text-shadow:
+    3px 3px 0px #000,
+    -1px -1px 0px #000,
+    1px -1px 0px #000,
+    -1px 1px 0px #000,
+    0 0 30px rgba(255, 107, 53, 0.8);
 }
 
 .candy-count {

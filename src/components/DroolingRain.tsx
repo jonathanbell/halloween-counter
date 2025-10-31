@@ -1,28 +1,32 @@
 import { useEffect, useState, useRef, memo } from 'react';
 import './DroolingRain.css';
 
-interface Emoji {
+interface FallingEmoji {
   id: number;
   x: number;
   delay: number;
   duration: number;
   size: number;
   swayAmount: number;
+  emoji: string;
 }
 
 interface DroolingRainProps {
   isActive?: boolean;
 }
 
+// Mix of drooling faces and candy emojis (drooling face weighted more heavily)
+const EMOJI_POOL = ['🤤', '🤤', '🤤', '🤤', '🍬', '🍭', '🍫'];
+
 export const DroolingRain = memo(({ isActive = true }: DroolingRainProps) => {
-  const [emojis, setEmojis] = useState<Emoji[]>([]);
+  const [emojis, setEmojis] = useState<FallingEmoji[]>([]);
   const nextIdRef = useRef(0);
   const lastRainRef = useRef(0);
 
   const createEmojiWave = () => {
     const now = Date.now();
     const count = 15 + Math.floor(Math.random() * 20); // 15-35 emojis per wave
-    const newEmojis: Emoji[] = [];
+    const newEmojis: FallingEmoji[] = [];
 
     for (let i = 0; i < count; i++) {
       newEmojis.push({
@@ -32,6 +36,7 @@ export const DroolingRain = memo(({ isActive = true }: DroolingRainProps) => {
         duration: 3000 + Math.random() * 2000, // 3-5s fall time
         size: 40 + Math.random() * 40, // 40-80px size
         swayAmount: 30 + Math.random() * 50, // How much it sways side to side
+        emoji: EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)], // Random emoji from pool
       });
     }
 
@@ -94,7 +99,7 @@ export const DroolingRain = memo(({ isActive = true }: DroolingRainProps) => {
             '--sway-amount': `${emoji.swayAmount}px`,
           } as React.CSSProperties}
         >
-          🤤
+          {emoji.emoji}
         </div>
       ))}
     </div>
