@@ -73,7 +73,7 @@ Access the settings page at `http://localhost:3000/settings` to:
 - Update initial candy amount
 - Reset counter for new session
 
-### Projector Setup
+### Projector and Computer Setup
 
 Best to setup positioning and sizing/zoom before Halloween night.
 
@@ -81,6 +81,18 @@ Best to setup positioning and sizing/zoom before Halloween night.
 2. Open main display at `http://localhost:3000`
 3. Press `Ctrl+F` for fullscreen mode
 4. Adjust projector focus and positioning
+
+To set all of the screensaver options to allow for long-term, full-screen viewing, set these values:
+
+```sh
+sudo pmset -c powernap 0 && sudo pmset -c sleep 0 && sudo pmset -c displaysleep 0 && sudo pmset -c lowpowermode 0 && defaults -currentHost write com.apple.screensaver idleTime 0 && pmset -g
+```
+
+To revert (after Halloween):
+
+```sh
+sudo pmset -c powernap 1 && sudo pmset -c sleep 1 && sudo pmset -c displaysleep 5 && sudo pmset -c lowpowermode 0 && defaults -currentHost write com.apple.screensaver idleTime 0 && pmset -g
+```
 
 ## Project Structure
 
