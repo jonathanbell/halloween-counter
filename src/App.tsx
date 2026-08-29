@@ -6,6 +6,7 @@ import { ZombieHorde } from './components/ZombieHorde';
 import { LightningCanvas } from './components/LightningCanvas';
 import { DroolingRain } from './components/DroolingRain';
 import { Game } from './components/Game';
+import { GameOverlay } from './components/GameOverlay';
 import { ViewerControls } from './components/ViewerControls';
 import { StatsPage } from './components/StatsPage';
 import { useCounter } from './hooks/useCounter';
@@ -91,7 +92,7 @@ function App() {
       <LightningCanvas triggerOnIncrement={counter.isAnimating} />
 
       {isGameActive ? (
-        <Game />
+        <GameOverlay />
       ) : (
         <div className="main-content">
           <Counter

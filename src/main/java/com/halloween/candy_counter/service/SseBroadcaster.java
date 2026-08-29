@@ -86,6 +86,25 @@ public class SseBroadcaster {
         sendToSubscribers(payload);
     }
 
+    public void broadcastZombieSpawned(String zombieId, int direction) {
+        if (subscribers.isEmpty()) return;
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "zombie_spawned");
+        payload.put("zombieId", zombieId);
+        payload.put("direction", direction);
+        payload.put("timestamp", java.time.Instant.now().toString());
+        sendToSubscribers(payload);
+    }
+
+    public void broadcastZombieMissed(String zombieId) {
+        if (subscribers.isEmpty()) return;
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "zombie_missed");
+        payload.put("zombieId", zombieId);
+        payload.put("timestamp", java.time.Instant.now().toString());
+        sendToSubscribers(payload);
+    }
+
     private void sendToSubscribers(Object obj) {
         String payload;
         try {

@@ -2,13 +2,16 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 
 export type SSEMessage =
   | { type: 'increment' | 'effect_lightning' | 'effect_candy_rain' | 'vote'; year: number; total: number; timestamp: string }
-  | { type: 'game_status'; active: boolean; sessionId: string; timestamp: string };
+  | { type: 'game_status'; active: boolean; sessionId: string; timestamp: string }
+  | { type: 'zombie_spawned'; zombieId: string; direction: number; timestamp: string }
+  | { type: 'zombie_missed'; zombieId: string; timestamp: string };
 
 interface UseSSEReturn {
   lastMessage: SSEMessage | null;
   isConnected: boolean;
   error: string | null;
   reconnectAttempts: number;
+  registerListener: (cb: (msg: SSEMessage) => void) => () => void;
 }
 
 export const useSSE = (url: string): UseSSEReturn => {
@@ -19,13 +22,20 @@ export const useSSE = (url: string): UseSSEReturn => {
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const listenersRef = useRef<Array<(msg: SSEMessage) => void>>([]);
+
+  const registerListener = useCallback((cb: (msg: SSEMessage) => void) => {
+    listenersRef.current.push(cb);
+    return () => {
+      listenersRef.current = listenersRef.current.filter(l => l !== cb);
+    };
+  }, []);
 
   const connect = useCallback(() => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
 
-    console.log(`[SSE] Connecting to ${url}...`);
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
@@ -39,8 +49,8 @@ export const useSSE = (url: string): UseSSEReturn => {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as SSEMessage;
-        console.log('[SSE] Received:', data);
         setLastMessage(data);
+        listenersRef.current.forEach(cb => cb(data));
       } catch (err) {
         console.error('[SSE] Parse error:', err);
         setError('Failed to parse server message');
@@ -48,7 +58,6 @@ export const useSSE = (url: string): UseSSEReturn => {
     };
 
     eventSource.onerror = () => {
-      console.error('[SSE] Connection error');
       setIsConnected(false);
       setError('Connection lost');
       eventSource.close();
@@ -56,7 +65,6 @@ export const useSSE = (url: string): UseSSEReturn => {
       const attempts = reconnectAttempts + 1;
       setReconnectAttempts(attempts);
       const delay = Math.min(1000 * Math.pow(2, attempts - 1), 30000);
-      console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${attempts})`);
 
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -70,7 +78,6 @@ export const useSSE = (url: string): UseSSEReturn => {
     connect();
 
     return () => {
-      console.log('[SSE] Cleaning up');
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
@@ -81,5 +88,5 @@ export const useSSE = (url: string): UseSSEReturn => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { lastMessage, isConnected, error, reconnectAttempts };
+  return { lastMessage, isConnected, error, reconnectAttempts, registerListener };
 };

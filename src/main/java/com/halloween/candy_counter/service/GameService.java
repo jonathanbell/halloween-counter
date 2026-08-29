@@ -21,14 +21,14 @@ public class GameService {
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final SseBroadcaster sseBroadcaster;
 
-    private static final long ZOMBIE_TTL_MS = 3000;
-    private static final long SPAWN_INTERVAL_MS = 600;
-    private static final long INITIAL_SPAWN_DELAY_MS = 300;
-    private static final long RESOLVE_INTERVAL_MS = 500;
-    private static final long RESOLVE_DELAY_MS = ZOMBIE_TTL_MS + 100;
-
-    private static final int HIT_SCORE = 1;
-    private static final int MISS_SCORE = -1;
+    static final long ZOMBIE_TTL_MS = 3000;
+    static final long SPAWN_INTERVAL_MS = 600;
+    static final long INITIAL_SPAWN_DELAY_MS = 300;
+    static final long RESOLVE_INTERVAL_MS = 500;
+    static final long RESOLVE_DELAY_MS = ZOMBIE_TTL_MS + 100;
+    static final long GAME_DURATION_MS = 30_000;
+    static final int HIT_SCORE = 1;
+    static final int MISS_SCORE = -1;
 
     public GameService(SseBroadcaster sseBroadcaster) {
         this.sseBroadcaster = sseBroadcaster;
@@ -101,6 +101,9 @@ public class GameService {
             TimeUnit.MILLISECONDS);
         gameSession.setResolveTask(resolveTask);
 
+        // Auto-end after GAME_DURATION_MS so the projection returns to counter
+        executor.schedule(() -> endGame(session), GAME_DURATION_MS, TimeUnit.MILLISECONDS);
+
         return sessionId;
     }
 
@@ -153,6 +156,9 @@ public class GameService {
         ZombieSpawn spawn = new ZombieSpawn(zombieId, direction, System.currentTimeMillis());
         gameSession.getZombieSpawns().put(zombieId, spawn);
 
+        // Mirror spawn to SSE subscribers so the projection renders visuals
+        sseBroadcaster.broadcastZombieSpawned(String.valueOf(zombieId), direction);
+
         try {
             gameSession.getSession().sendMessage(new org.springframework.web.socket.TextMessage(
                 String.format("{\"type\":\"zombie_spawned\",\"zombieId\":\"%d\",\"direction\":%d}",
@@ -170,6 +176,7 @@ public class GameService {
             if (!spawn.isExpired(now)) return false;
 
             gameSession.addScore(MISS_SCORE);
+            sseBroadcaster.broadcastZombieMissed(String.valueOf(spawn.zombieId));
             try {
                 gameSession.getSession().sendMessage(new org.springframework.web.socket.TextMessage(
                     String.format("{\"type\":\"zombie_missed\",\"zombieId\":\"%d\"}", spawn.zombieId)
