@@ -21,8 +21,33 @@ public class GameService {
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final SseBroadcaster sseBroadcaster;
 
+    private static final long ZOMBIE_TTL_MS = 3000;
+    private static final long SPAWN_INTERVAL_MS = 600;
+    private static final long INITIAL_SPAWN_DELAY_MS = 300;
+    private static final long RESOLVE_INTERVAL_MS = 500;
+    private static final long RESOLVE_DELAY_MS = ZOMBIE_TTL_MS + 100;
+
+    private static final int HIT_SCORE = 1;
+    private static final int MISS_SCORE = -1;
+
     public GameService(SseBroadcaster sseBroadcaster) {
         this.sseBroadcaster = sseBroadcaster;
+    }
+
+    public static class ZombieSpawn {
+        public final long zombieId;
+        public final int direction; // 0=left, 1=right
+        public final long spawnTime;
+
+        public ZombieSpawn(long zombieId, int direction, long spawnTime) {
+            this.zombieId = zombieId;
+            this.direction = direction;
+            this.spawnTime = spawnTime;
+        }
+
+        public boolean isExpired(long now) {
+            return (now - spawnTime) >= ZOMBIE_TTL_MS;
+        }
     }
 
     public static class GameSession {
@@ -30,7 +55,8 @@ public class GameService {
         private final WebSocketSession session;
         private final Map<Long, ZombieSpawn> zombieSpawns = new HashMap<>();
         private int score = 0;
-        private ScheduledFuture<?> cleanupTask;
+        private ScheduledFuture<?> spawnTask;
+        private ScheduledFuture<?> resolveTask;
 
         public GameSession(UUID sessionId, WebSocketSession session) {
             this.sessionId = sessionId;
@@ -42,42 +68,38 @@ public class GameService {
         public Map<Long, ZombieSpawn> getZombieSpawns() { return zombieSpawns; }
         public int getScore() { return score; }
         public void addScore(int delta) { score += delta; }
-        public void setCleanupTask(ScheduledFuture<?> task) { this.cleanupTask = task; }
-        public ScheduledFuture<?> getCleanupTask() { return cleanupTask; }
+
+        public void setSpawnTask(ScheduledFuture<?> task) { this.spawnTask = task; }
+        public void setResolveTask(ScheduledFuture<?> task) { this.resolveTask = task; }
+        public ScheduledFuture<?> getSpawnTask() { return spawnTask; }
+        public ScheduledFuture<?> getResolveTask() { return resolveTask; }
     }
 
-    public static class ZombieSpawn {
-        public final long zombieId;
-        public final int direction; // 0=left, 1=right
-        public final long spawnTime;
-        public final long ttlMs = 3000;
-
-        public ZombieSpawn(long zombieId, int direction, long spawnTime) {
-            this.zombieId = zombieId;
-            this.direction = direction;
-            this.spawnTime = spawnTime;
-        }
-
-        public boolean isValid(long now) {
-            return (now - spawnTime) < ttlMs;
-        }
-    }
-
-    public @Nullable UUID startGame(WebSocketSession session) {
-        // Prevent concurrent game starts in the same pixel zone
+    @Nullable
+    public UUID startGame(WebSocketSession session) {
+        // Concurrency gate: one active game at a time
         if (!activeSessions.isEmpty()) return null;
 
         UUID sessionId = UUID.randomUUID();
         GameSession gameSession = new GameSession(sessionId, session);
-        String key = session.getId();
-        activeSessions.put(key, gameSession);
-        // Announce game mode to SSE projection
-        notifyGameStatus(true, sessionId);
+        activeSessions.put(session.getId(), gameSession);
 
-        // Schedule zombie spawn generator (every ~800ms is roughly "fast-paced")
+        // Announce game mode to SSE clients
+        broadcastGameStatus(true, sessionId);
+
         ScheduledFuture<?> spawnTask = executor.scheduleWithFixedDelay(
-            () -> spawnZombie(gameSession), 300, 800, TimeUnit.MILLISECONDS);
-        gameSession.setCleanupTask(spawnTask);
+            () -> spawnZombie(gameSession),
+            INITIAL_SPAWN_DELAY_MS,
+            SPAWN_INTERVAL_MS,
+            TimeUnit.MILLISECONDS);
+        gameSession.setSpawnTask(spawnTask);
+
+        ScheduledFuture<?> resolveTask = executor.scheduleWithFixedDelay(
+            () -> resolveMissedZombies(gameSession),
+            RESOLVE_DELAY_MS,
+            RESOLVE_INTERVAL_MS,
+            TimeUnit.MILLISECONDS);
+        gameSession.setResolveTask(resolveTask);
 
         return sessionId;
     }
@@ -87,37 +109,32 @@ public class GameService {
         if (sessionState == null) return;
 
         if (zombieId == null) {
-            // hit nothing? decrease score -1
-            sessionState.addScore(-1);
+            sessionState.addScore(MISS_SCORE);
             return;
         }
 
         try {
             long zombieKey = Long.parseLong(zombieId);
             ZombieSpawn spawn = sessionState.getZombieSpawns().get(zombieKey);
-            if (spawn == null || !spawn.isValid(System.currentTimeMillis())) {
-                sessionState.addScore(-1);
+            if (spawn == null || spawn.isExpired(System.currentTimeMillis())) {
+                sessionState.addScore(MISS_SCORE);
                 return;
             }
 
-            // Hit correctly: +1 point
-            sessionState.addScore(1);
+            // Hit
+            sessionState.addScore(HIT_SCORE);
             sessionState.getZombieSpawns().remove(zombieKey);
-        } catch (Exception e) {
-            // invalid scoredive - ignore scoring influence
-        }
+        } catch (Exception ignored) {}
     }
 
     public void endGame(WebSocketSession session) {
         GameSession sessionState = activeSessions.remove(session.getId());
         if (sessionState == null) return;
 
-        ScheduledFuture<?> task = sessionState.getCleanupTask();
-        if (task != null) task.cancel(true);
+        cancelTasks(sessionState);
 
-        // announce the score back
         Integer finalScore = sessionState.getScore();
-        notifyGameStatus(false, sessionState.getSessionId());
+        broadcastGameStatus(false, sessionState.getSessionId());
 
         try {
             session.sendMessage(new org.springframework.web.socket.TextMessage(
@@ -127,31 +144,51 @@ public class GameService {
     }
 
     public void handleDisconnect(WebSocketSession session) {
-        // Disable game upon disconnect
         endGame(session);
     }
 
-    private void spawnZombie(GameSession sessionState) {
-        // Spawn on LEFT or RIGHT sometimes
+    private void spawnZombie(GameSession gameSession) {
         int direction = Math.random() < 0.5 ? 0 : 1;
-
-        // Assign ID (rotating helper)
         long zombieId = System.nanoTime();
         ZombieSpawn spawn = new ZombieSpawn(zombieId, direction, System.currentTimeMillis());
-        sessionState.getZombieSpawns().put(zombieId, spawn);
+        gameSession.getZombieSpawns().put(zombieId, spawn);
 
-        // Send spawn event over WebSocket with sufficient CRUD context ?
         try {
-            sessionState.getSession().sendMessage(new org.springframework.web.socket.TextMessage(
-                String.format("{\"type\":\"zombie_spawned\",\"zombieId\":\"%d\",\"direction\":%d}", zombieId, direction)
+            gameSession.getSession().sendMessage(new org.springframework.web.socket.TextMessage(
+                String.format("{\"type\":\"zombie_spawned\",\"zombieId\":\"%d\",\"direction\":%d}",
+                    zombieId, direction)
             ));
         } catch (Exception ignored) {}
     }
 
-    private void notifyGameStatus(boolean active, UUID sessionId) {
-        // Tell projection directly that the game is underway, without touching DB
-        com.halloween.candy_counter.domain.GameStatusEvent event =
-            new com.halloween.candy_counter.domain.GameStatusEvent(active, sessionId);
+    private void resolveMissedZombies(GameSession gameSession) {
+        Map<Long, ZombieSpawn> spawns = gameSession.getZombieSpawns();
+        long now = System.currentTimeMillis();
+
+        spawns.entrySet().removeIf(entry -> {
+            ZombieSpawn spawn = entry.getValue();
+            if (!spawn.isExpired(now)) return false;
+
+            gameSession.addScore(MISS_SCORE);
+            try {
+                gameSession.getSession().sendMessage(new org.springframework.web.socket.TextMessage(
+                    String.format("{\"type\":\"zombie_missed\",\"zombieId\":\"%d\"}", spawn.zombieId)
+                ));
+            } catch (Exception ignored) {}
+            return true;
+        });
+    }
+
+    private void cancelTasks(GameSession sessionState) {
+        ScheduledFuture<?> spawnTask = sessionState.getSpawnTask();
+        if (spawnTask != null) spawnTask.cancel(true);
+
+        ScheduledFuture<?> resolveTask = sessionState.getResolveTask();
+        if (resolveTask != null) resolveTask.cancel(true);
+    }
+
+    private void broadcastGameStatus(boolean active, UUID sessionId) {
+        GameStatusEvent event = new GameStatusEvent(active, sessionId);
         sseBroadcaster.broadcastGameStatus(event);
     }
 }
