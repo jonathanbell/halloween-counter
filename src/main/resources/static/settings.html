@@ -5,11 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Halloween Counter Settings</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -37,9 +33,7 @@
       font-size: 28px;
     }
 
-    .form-group {
-      margin-bottom: 25px;
-    }
+    .form-group { margin-bottom: 25px; }
 
     label {
       display: block;
@@ -96,15 +90,6 @@
       box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
     }
 
-    .btn-secondary {
-      background: #f0f0f0;
-      color: #666;
-    }
-
-    .btn-secondary:hover {
-      background: #e0e0e0;
-    }
-
     .message {
       padding: 12px 16px;
       border-radius: 8px;
@@ -150,27 +135,13 @@
       border-bottom: 1px solid #e0e0e0;
     }
 
-    .current-values .value:last-child {
-      border-bottom: none;
-    }
-
-    .current-values .value span:first-child {
-      color: #666;
-    }
-
-    .current-values .value span:last-child {
-      font-weight: 600;
-      color: #333;
-    }
+    .current-values .value:last-child { border-bottom: none; }
+    .current-values .value span:first-child { color: #666; }
+    .current-values .value span:last-child { font-weight: 600; color: #333; }
 
     @media (max-width: 480px) {
-      .container {
-        padding: 30px 20px;
-      }
-
-      h1 {
-        font-size: 24px;
-      }
+      .container { padding: 30px 20px; }
+      h1 { font-size: 24px; }
     }
   </style>
 </head>
@@ -196,14 +167,13 @@
 
     <form id="settingsForm">
       <div class="form-group">
-        <label for="currentCount">Current Count</label>
+        <label for="currentTotal">Set Total Count</label>
         <input
           type="number"
-          id="currentCount"
-          name="currentCount"
+          id="currentTotal"
+          name="currentTotal"
           min="0"
-          placeholder="Enter current visitor count"
-          required
+          placeholder="Override the running total (e.g. after a missed count)"
         >
       </div>
 
@@ -214,8 +184,7 @@
           id="initialCandyCount"
           name="initialCandyCount"
           min="1"
-          placeholder="Enter total candy pieces"
-          required
+          placeholder="Total candy pieces available"
         >
       </div>
 
@@ -228,63 +197,68 @@
   </div>
 
   <script>
-    // Get current state on load
+    // Token from QR code URL: /settings.html?token=...
+    const token = new URLSearchParams(window.location.search).get('token');
+    const YEAR = 2026;
+
+    if (!token) {
+      document.body.innerHTML = '<div style="color:white;font-size:24px;text-align:center;padding:40px;">Missing settings token.<br>Scan the settings QR code.</div>';
+      throw new Error('missing token');
+    }
+
     async function loadCurrentState() {
       try {
-        const response = await fetch('/state');
+        const response = await fetch(`/api/settings?year=${YEAR}&token=${encodeURIComponent(token)}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const state = await response.json();
 
-        // Update display
-        document.getElementById('currentCountDisplay').textContent = state.currentCount;
+        document.getElementById('currentCountDisplay').textContent = state.currentTotal;
         document.getElementById('initialCandyDisplay').textContent = state.initialCandyCount;
         document.getElementById('candyRemainingDisplay').textContent = state.candyRemaining;
 
-        // Set form values
-        document.getElementById('currentCount').value = state.currentCount;
         document.getElementById('initialCandyCount').value = state.initialCandyCount;
       } catch (error) {
-        console.error('Error loading current state:', error);
+        console.error('Error loading settings:', error);
         document.getElementById('currentCountDisplay').textContent = 'Error';
         document.getElementById('initialCandyDisplay').textContent = 'Error';
         document.getElementById('candyRemainingDisplay').textContent = 'Error';
       }
     }
 
-    // Load state on page load
     loadCurrentState();
 
-    // Handle form submission
     document.getElementById('settingsForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const formData = new FormData(e.target);
-      const data = {
-        currentCount: parseInt(formData.get('currentCount')),
-        initialCandyCount: parseInt(formData.get('initialCandyCount'))
-      };
+      const totalInput = document.getElementById('currentTotal').value;
+      const candyInput = document.getElementById('initialCandyCount').value;
+
+      const payload = { year: YEAR };
+      if (totalInput !== '') payload.currentTotal = parseInt(totalInput);
+      if (candyInput !== '') payload.initialCandyCount = parseInt(candyInput);
 
       const messageEl = document.getElementById('message');
 
       try {
-        const response = await fetch('/settings', {
+        const response = await fetch('/api/settings', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(data)
+          body: JSON.stringify(payload)
         });
 
         if (response.ok) {
-          const result = await response.json();
+          const state = await response.json();
           messageEl.className = 'message success';
           messageEl.textContent = 'Settings updated successfully!';
 
-          // Update current values display
-          document.getElementById('currentCountDisplay').textContent = result.state.currentCount;
-          document.getElementById('initialCandyDisplay').textContent = result.state.initialCandyCount;
-          document.getElementById('candyRemainingDisplay').textContent = result.state.candyRemaining;
+          document.getElementById('currentCountDisplay').textContent = state.currentTotal;
+          document.getElementById('initialCandyDisplay').textContent = state.initialCandyCount;
+          document.getElementById('candyRemainingDisplay').textContent = state.candyRemaining;
+          document.getElementById('currentTotal').value = '';
 
-          // Clear message after 3 seconds
           setTimeout(() => {
             messageEl.className = 'message';
             messageEl.textContent = '';
@@ -294,10 +268,9 @@
         }
       } catch (error) {
         messageEl.className = 'message error';
-        messageEl.textContent = 'Error updating settings. Please try again.';
+        messageEl.textContent = 'Error updating settings. Check your token.';
         console.error('Error:', error);
 
-        // Clear message after 5 seconds
         setTimeout(() => {
           messageEl.className = 'message';
           messageEl.textContent = '';
