@@ -6,9 +6,11 @@ import { ZombieHorde } from './components/ZombieHorde';
 import { LightningCanvas } from './components/LightningCanvas';
 import { DroolingRain } from './components/DroolingRain';
 import { Game } from './components/Game';
+import { ViewerControls } from './components/ViewerControls';
 import { useCounter } from './hooks/useCounter';
 import { useStats } from './hooks/useStats';
 import { useSSE } from './hooks/useSSE';
+import { useProjectionMode } from './hooks/useProjectionMode';
 import './App.css';
 
 // Cheap router for /game route
@@ -18,6 +20,7 @@ function usePath() {
 
 function App() {
   const path = usePath();
+  const isProjection = useProjectionMode();
 
   // Phone controller route
   if (path === '/game') {
@@ -105,6 +108,8 @@ function App() {
           />
 
           <DroolingRain isActive={counter.candyRemaining > 0} />
+
+          {!isProjection && <ViewerControls />}
         </div>
       )}
 
