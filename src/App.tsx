@@ -7,6 +7,7 @@ import { LightningCanvas } from './components/LightningCanvas';
 import { DroolingRain } from './components/DroolingRain';
 import { Game } from './components/Game';
 import { ViewerControls } from './components/ViewerControls';
+import { StatsPage } from './components/StatsPage';
 import { useCounter } from './hooks/useCounter';
 import { useStats } from './hooks/useStats';
 import { useSSE } from './hooks/useSSE';
@@ -25,6 +26,10 @@ function App() {
   // Phone controller route
   if (path === '/game') {
     return <Game />;
+  }
+
+  if (path === '/stats') {
+    return <StatsPage />;
   }
 
   const counter = useCounter();

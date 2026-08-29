@@ -40,6 +40,7 @@ export const ViewerControls = () => {
           🍬 Candy Rain
         </button>
         <a className="control-btn game-link" href="/game">🎮 Play Game</a>
+        <a className="control-btn game-link" href="/stats">📊 Stats</a>
       </div>
 
       <div className="vote-row">
