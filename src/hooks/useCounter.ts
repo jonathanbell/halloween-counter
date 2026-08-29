@@ -2,18 +2,30 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { CounterState } from '../types';
 import { useSSE } from './useSSE';
 
-export const useCounter = () => {
-  // Get server state via SSE
-  const { state: sseState, isConnected, error } = useSSE('/events');
-  
-  // Local state for optimistic updates and animation
+const CURRENT_YEAR = 2026;
+const API_BASE = '/api';
+
+interface UseCounterReturn {
+  currentCount: number;
+  candyRemaining: number;
+  initialCandyCount: number;
+  isAnimating: boolean;
+  isConnected: boolean;
+  connectionError: string | null;
+  increment: () => Promise<void>;
+  reset: () => void;
+}
+
+export const useCounter = (): UseCounterReturn => {
+  const { lastMessage, isConnected, error } = useSSE(`${API_BASE}/events`);
+
   const [localState, setLocalState] = useState<CounterState>({
     currentCount: 0,
     candyRemaining: 300,
     initialCandyCount: 300,
     candyPerChild: 1,
   });
-  
+
   const [isAnimating, setIsAnimating] = useState(false);
   const prevCountRef = useRef<number | null>(null);
   const animationTimeoutRef = useRef<number | null>(null);
@@ -29,27 +41,27 @@ export const useCounter = () => {
       animationTimeoutRef.current = null;
     }, 600);
   }, []);
-  
-  // Sync local state with SSE state
+
+  // Sync local state with SSE messages
   useEffect(() => {
-    if (sseState) {
+    if (!lastMessage) return;
+
+    if (lastMessage.type === 'increment') {
+      const newCount = lastMessage.total;
       setLocalState(prev => ({
         ...prev,
-        currentCount: sseState.currentCount,
-        candyRemaining: sseState.candyRemaining,
-        initialCandyCount: sseState.initialCandyCount,
+        currentCount: newCount,
+        candyRemaining: Math.max(0, prev.initialCandyCount - newCount),
       }));
 
-      if (prevCountRef.current !== null && sseState.currentCount > prevCountRef.current) {
-        const delta = sseState.currentCount - prevCountRef.current;
+      if (prevCountRef.current !== null && newCount > prevCountRef.current) {
+        const delta = newCount - prevCountRef.current;
         const pendingLocal = pendingLocalUpdatesRef.current;
 
         if (pendingLocal > 0) {
           if (delta >= pendingLocal) {
             pendingLocalUpdatesRef.current = 0;
-            if (delta > pendingLocal) {
-              triggerAnimation();
-            }
+            if (delta > pendingLocal) triggerAnimation();
           } else {
             pendingLocalUpdatesRef.current = pendingLocal - delta;
           }
@@ -58,10 +70,10 @@ export const useCounter = () => {
         }
       }
 
-      prevCountRef.current = sseState.currentCount;
+      prevCountRef.current = newCount;
     }
-  }, [sseState, triggerAnimation]);
-  
+  }, [lastMessage, triggerAnimation]);
+
   // Log connection status
   useEffect(() => {
     if (isConnected) {
@@ -82,35 +94,34 @@ export const useCounter = () => {
     triggerAnimation();
 
     try {
-      // Send increment request to server
-      const response = await fetch('/increment', {
+      const token = new URLSearchParams(window.location.search).get('token') || 'dev-admin-token';
+      const response = await fetch(`${API_BASE}/counter`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
+        body: JSON.stringify({ year: CURRENT_YEAR }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to increment counter');
       }
-      
-      const data = await response.json();
-      console.log('[Counter] Increment successful:', data);
     } catch (err) {
       console.error('[Counter] Failed to increment:', err);
       // Revert optimistic update on failure
-      if (sseState) {
+      if (lastMessage && lastMessage.type === 'increment') {
         setLocalState(prev => ({
           ...prev,
-          currentCount: sseState.currentCount,
-          candyRemaining: sseState.candyRemaining,
+          currentCount: lastMessage.total,
+          candyRemaining: Math.max(0, prev.initialCandyCount - lastMessage.total),
         }));
       }
       if (pendingLocalUpdatesRef.current > 0) {
         pendingLocalUpdatesRef.current = Math.max(0, pendingLocalUpdatesRef.current - 1);
       }
     }
-  }, [sseState, triggerAnimation]);
+  }, [lastMessage, triggerAnimation]);
 
   useEffect(() => {
     return () => {
@@ -122,7 +133,6 @@ export const useCounter = () => {
 
   const reset = useCallback(() => {
     if (window.confirm('Are you sure you want to reset the counter?')) {
-      // Navigate to settings page for reset
       window.location.href = '/settings';
     }
   }, []);

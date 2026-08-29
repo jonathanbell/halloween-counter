@@ -8,6 +8,7 @@ import { DroolingRain } from './components/DroolingRain';
 import { Game } from './components/Game';
 import { useCounter } from './hooks/useCounter';
 import { useStats } from './hooks/useStats';
+import { useSSE } from './hooks/useSSE';
 import './App.css';
 
 // Cheap router for /game route
@@ -18,17 +19,21 @@ function usePath() {
 function App() {
   const path = usePath();
 
+  // Phone controller route
   if (path === '/game') {
     return <Game />;
   }
 
   const counter = useCounter();
-
   const stats = useStats(
     counter.currentCount,
     counter.candyRemaining,
     counter.initialCandyCount
   );
+
+  // Game mode listening — render game overlay when a game session is active
+  const { lastMessage } = useSSE('/api/events');
+  const isGameActive = lastMessage?.type === 'game_status' && lastMessage.active;
 
   // Log connection status to console
   useEffect(() => {
@@ -76,27 +81,32 @@ function App() {
   return (
     <div className="app">
       <LightningCanvas triggerOnIncrement={counter.isAnimating} />
-      <div className="main-content">
-        <Counter
-          count={counter.currentCount}
-          isAnimating={counter.isAnimating}
-          isOutOfCandy={counter.candyRemaining === 0}
-        />
 
-        <CandyProgress
-          candyRemaining={counter.candyRemaining}
-          initialCandyCount={counter.initialCandyCount}
-        />
+      {isGameActive ? (
+        <Game />
+      ) : (
+        <div className="main-content">
+          <Counter
+            count={counter.currentCount}
+            isAnimating={counter.isAnimating}
+            isOutOfCandy={counter.candyRemaining === 0}
+          />
 
-        <StatsDisplay stats={stats} />
+          <CandyProgress
+            candyRemaining={counter.candyRemaining}
+            initialCandyCount={counter.initialCandyCount}
+          />
 
-        <ZombieHorde
-          currentCount={counter.currentCount}
-          candyRemaining={counter.candyRemaining}
-        />
+          <StatsDisplay stats={stats} />
 
-        <DroolingRain isActive={counter.candyRemaining > 0} />
-      </div>
+          <ZombieHorde
+            currentCount={counter.currentCount}
+            candyRemaining={counter.candyRemaining}
+          />
+
+          <DroolingRain isActive={counter.candyRemaining > 0} />
+        </div>
+      )}
 
     </div>
   );
