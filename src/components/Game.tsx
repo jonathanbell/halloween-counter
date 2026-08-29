@@ -1,5 +1,40 @@
 import { useGame } from '../hooks/useGame';
 
+// Canvas-generated share image (final score + hashtag)
+function shareScore(score: number): void {
+  const hashtag = '#HalloweenCandyCounter2026';
+  const canvas = document.createElement('canvas');
+  canvas.width = 800;
+  canvas.height = 500;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // backdrop
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, 800, 500);
+
+  // decorations
+  ctx.fillStyle = '#9b59b6';
+  ctx.font = 'bold 32px monospace';
+  ctx.fillText('🧟 Whack-a-Zombie 🎮', 80, 80);
+
+  // score + message
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 120px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(String(score), 400, 280);
+
+  ctx.fillStyle = '#e67e22';
+  ctx.font = 'bold 24px monospace';
+  ctx.fillText(hashtag, 400, 360);
+
+  const url = canvas.toDataURL('image/png');
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `whack-a-zombie-score-${score}.png`;
+  link.click();
+}
+
 export const Game = () => {
   const {
     isConnected,
@@ -77,15 +112,23 @@ export const Game = () => {
           </>
         )}
 
-        {finalScore !== null && (
-          <div style={{ marginTop: '20px' }}>
-            <h2>Game Over!</h2>
-            <p>Final Score: {finalScore}</p>
+      {finalScore !== null && (
+        <div style={{ marginTop: '20px' }}>
+          <h2>Game Over!</h2>
+          <p>Final Score: {finalScore}</p>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={handleStartGame} style={{ padding: '10px 20px', fontSize: '16px' }}>
               Play Again
             </button>
+            <button
+              onClick={() => shareScore(finalScore)}
+              style={{ padding: '10px 20px', fontSize: '16px', background: '#e67e22', color: '#fff', border: 'none', borderRadius: '6px' }}
+            >
+              📸 Share Score
+            </button>
           </div>
-        )}
+        </div>
+      )}
       </div>
     </div>
   );
