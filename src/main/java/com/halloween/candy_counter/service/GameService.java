@@ -30,6 +30,11 @@ public class GameService {
     static final int HIT_SCORE = 1;
     static final int MISS_SCORE = -1;
 
+    // Test hook: exposes sessions for unit tests
+    Map<String, GameSession> getSessionsForTest() {
+        return activeSessions;
+    }
+
     public GameService(SseBroadcaster sseBroadcaster) {
         this.sseBroadcaster = sseBroadcaster;
     }
