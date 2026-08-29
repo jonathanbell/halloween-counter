@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Halloween Admin QR Codes</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #1a1a2e;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+      min-height: 100vh;
+    }
+    h1 { margin-bottom: 32px; }
+    .qr-grid {
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .qr-card {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .qr-card h2 { margin-bottom: 12px; }
+    .qr-card img { max-width: 200px; }
+    .hint {
+      margin-top: 32px;
+      max-width: 560px;
+      color: #aaa;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎃 Admin QR Codes</h1>
+  <div class="qr-grid">
+    <div class="qr-card">
+      <h2>Remote Admin</h2>
+      <img id="adminQr" alt="admin QR">
+      <p>/remote.html</p>
+    </div>
+    <div class="qr-card">
+      <h2>Settings</h2>
+      <img id="settingsQr" alt="settings QR">
+      <p>/settings.html</p>
+    </div>
+  </div>
+  <p class="hint">
+    These PNGs were baked at build by <code>npm run qr</code>. Recreate
+    prints whenever the public URL or tokens change.
+  </p>
+  <script>
+    document.getElementById('adminQr').src = '/qr/admin-qr.png';
+    document.getElementById('settingsQr').src = '/qr/settings-qr.png';
+  </script>
+</body>
+</html>

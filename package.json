@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node server.js",
-    "start": "npm run build && npm run server"
+    "start": "npm run build && npm run server",
+    "qr": "node scripts/generate-qr.mjs"
   },
   "dependencies": {
     "@rive-app/react-canvas": "^4.23.1",
@@ -28,6 +29,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "qrcode": "^1.5.4",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.39.1",
     "vite": "^7.1.2",
