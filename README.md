@@ -1,172 +1,87 @@
-# Halloween Trick-or-Treater Counter 🎃
+# Halloween 2026 Candy Counter 🎃
 
-A spooky, interactive counter application with real-time remote control capabilities. Project onto your garage door via an HDMI capable projector for a fun, animated display that tracks visitors and candy inventory with zombie-themed animations. Control the counter from any mobile device on your network!
+Spring Boot + Vite/React counter projected onto a garage door. Live count, votes, interactive effects, and a WebSocket game (Whack-a-Zombie). Deploys as a Docker image and runs against managed Postgres.
 
 ## Quick Start
 
-### Installation
+Terminal A (backend):
 
 ```bash
-git clone https://github.com/jonathanbell/halloween-counter.git
-cd halloween-counter
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+# app on http://localhost:8080 (H2 in-memory DB)
+```
 
+Terminal B (frontend dev):
+
+```bash
 npm install
+npm run dev
+# vite on http://localhost:5173 (hits backend at :8080)
 ```
 
-### Running the Application
+Or build the frontend into the server:
 
 ```bash
-# Production mode (recommended)
-npm run start     # Builds and starts the SSE server on port 3000
-
-# Development mode
-npm run dev       # Vite dev server (no SSE features)
-npm run dev:all   # Build and run SSE server for development
+npm run build && cp -r dist/* src/main/resources/static/
+mvn spring-boot:run
+# then open http://localhost:8080
 ```
 
-### Access Points
+## Interfaces
 
-- **Main Display**: `http://localhost:3000` (connect to projector)
-- **Remote Control**: `http://localhost:3000/remote` (mobile devices)
-- **Settings**: `http://localhost:3000/settings` (configure candy and trick-o-treater counts)
+| Route | Audience | Purpose |
+|-------|----------|---------|
+| `/` (React) | viewer/projection | counter + zombies + vote/effects controls |
+| `/?projection` | projector browser | counter only, controls hidden |
+| `/game` (React) | viewer phone | WS-driven Whack-a-Zombie controller |
+| `/stats` (React) | viewer phone | Recharts graphs + last-year synthetic |
+| `/remote.html?token=...` | admin | increment panel |
+| `/settings.html?token=...` | admin | initial candy + total override |
 
-## Features
+Token env vars: `ADMIN_TOKEN` / `SETTINGS_TOKEN`.
+Projector mode only hides controls; page semantics are the same.
 
-- 🎃 **Real-time Synchronization**: All devices stay in sync via Server-Sent Events (SSE)
-- 📱 **Mobile Remote Control**: Increment counter from any phone on your network
-- 🧟 **Animated Zombies**: Rive-powered animations that react to visitor count
-- 📊 **Live Statistics**: Track visitors per hour, average time between visits
-- 🍬 **Candy Tracking**: Monitor remaining candy with visual progress bar
-- 🖥️ **Projector Ready**: Full-screen mode optimized for garage door projection
+## Backend API
 
-## Usage
+**Public**: `GET /api/state`, `GET /api/events` (SSE), `POST /api/effects/lightning|candy-rain`, `POST /api/vote`, `GET /api/stats`.
 
-### Basic Operation
+**Admin (token)**: `POST /api/counter {year}`, `GET/POST /api/settings`.
 
-1. **Start the server**: Run `npm run start`
-2. **Open main display**: Navigate to `http://localhost:3000`
-3. **Connect mobile devices**: Share your IP address for remote access
-4. **View fullscreen**: Press `Ctrl+F` on the main display
-5. **Count visitors**: Press spacebar or use mobile remote
+**Game (WebSocket `/ws/game`)**: `game_start`, `zombie_hit`, `game_end` on client. `game_started|denied`, `zombie_spawned|missed`, `game_ended` on server. See `AGENTS.md` Section 4 for the full protocol.
 
-### Network Setup
+## Database
 
-1. **Find your IP address**:
+PostgreSQL via Flyway migrations (`V1` events, `V2` settings, `V3` count_adjustment). Quoted `"year"`/`"timestamp"` identifiers to survive H2 and PG reserved-word crossfire.
 
-   ```bash
-   # macOS/Linux
-   ifconfig | grep "inet "
+Local dev uses in-memory H2 (`application-local.yml`) — empty per restart, switch to real PG by supplying `DATABASE_URL`/`USER`/`PASSWORD` env vars.
 
-   # Windows
-   ipconfig
-   ```
-
-2. **Share with helpers**: Give them `http://<your-ip>:3000/remote`
-
-3. **All devices must be on same network** (same WiFi)
-
-### Configuration
-
-Access the settings page at `http://localhost:3000/settings` to:
-
-- Set current visitor count
-- Update initial candy amount
-- Reset counter for new session
-
-### Projector and Computer Setup
-
-Best to setup positioning and sizing/zoom before Halloween night.
-
-1. Connect computer to projector via HDMI
-2. Open main display at `http://localhost:3000`
-3. Press `Ctrl+F` for fullscreen mode
-4. Adjust projector focus and positioning
-
-To set all of the screensaver options to allow for long-term, full-screen viewing, set these values:
-
-```sh
-sudo pmset -c powernap 0 && sudo pmset -c sleep 0 && sudo pmset -c displaysleep 0 && sudo pmset -c lowpowermode 0 && defaults -currentHost write com.apple.screensaver idleTime 0 && pmset -g
-```
-
-To revert (after Halloween):
-
-```sh
-sudo pmset -c powernap 1 && sudo pmset -c sleep 1 && sudo pmset -c displaysleep 5 && sudo pmset -c lowpowermode 0 && defaults -currentHost write com.apple.screensaver idleTime 0 && pmset -g
-```
-
-## Project Structure
-
-```
-halloween-counter/
-├── server.js                    # SSE server (Node.js, no dependencies)
-├── src/
-│   ├── components/
-│   │   ├── Counter.tsx         # Main counter display
-│   │   ├── CandyProgress.tsx   # Candy inventory bar
-│   │   ├── StatsDisplay.tsx    # Statistics dashboard
-│   │   └── ZombieHorde.tsx     # Rive zombie animations
-│   ├── hooks/
-│   │   ├── useCounter.ts       # Server-synced counter logic
-│   │   ├── useSSE.ts           # SSE connection management
-│   │   ├── useQueryParams.ts   # URL parameter handling
-│   │   └── useStats.ts         # Statistics calculations
-│   ├── types/
-│   │   └── index.ts            # TypeScript definitions
-│   ├── App.tsx                 # Main application
-│   └── main.tsx                # Entry point
-├── public/
-│   ├── remote.html             # Mobile remote control
-│   ├── settings.html           # Configuration page
-│   └── rive/
-│       └── zombie.riv          # Zombie animation file
-├── dist/                       # Built React app (after npm run build)
-└── package.json
-```
-
-## Development
-
-### Available Scripts
+## Tests
 
 ```bash
-npm run dev         # Vite dev server (React only, no SSE)
-npm run dev:server  # SSE server only
-npm run dev:all     # Build and run SSE server
-npm run build       # Build React app for production
-npm run server      # Run SSE server (requires dist/)
-npm run start       # Build and start everything
-npm run lint        # Run ESLint checks
-npm run preview     # Preview production build
+mvn test          # 15 unit tests (services, token filter, game service)
+npm run build     # TS check + static bundle it to server
 ```
 
-## Technical Architecture
+## Docker
 
-### Server-Sent Events (SSE)
+```bash
+docker build -t candy-counter:latest .
+docker run -p 8080:8080 \
+  -e DATABASE_URL=jdbc:postgresql://host:5432/candy \
+  -e DATABASE_USER=user -e DATABASE_PASSWORD=secret \
+  -e ADMIN_TOKEN=mystrongtoken -e SETTINGS_TOKEN=other-strong-token \
+  candy-counter:latest
+```
 
-The app uses a lightweight Node.js server with zero external dependencies:
+Two-stage build (Maven → JRE) keeps the runtime image slim. Postgres lives on managed host outside the container.
 
-- Real-time state synchronization across all devices
-- Automatic reconnection with exponential backoff
-- In-memory state management
-- CORS enabled for local network access
+## Documentation
 
-### Key Endpoints
-
-- `GET /events` - SSE stream for real-time updates
-- `POST /increment` - Increment the counter
-- `POST /settings` - Update configuration
-- `GET /state` - Get current state
-
-## Tips for Halloween Night
-
-1. **Test before dark**: Set up projector and test network connectivity in daylight
-2. **Share remote URL**: Give helpers `http://<your-ip>:3000/remote` on their phones
-3. **Monitor candy levels**: Watch the progress bar to pace distribution
-4. **Use settings page**: Adjust counts at `http://localhost:3000/settings` if needed
-5. **Network tips**:
-   - Ensure all devices are on same WiFi
-   - Keep server running on main display computer
-   - Mobile devices will auto-reconnect if connection drops
+- `AGENTS.md` — agent-focused project guide (architecture, data model, conventions)
+- `docs/PRD_2026_HALLOWEEN.md` — product requirements for Halloween 2026
+- `CLAUDE.md` — usage guidance for Claude sessions
+- `docs/architecture.md` — high-level system walk (to be added)
 
 ## Credits
-
-- Zombie animations from the [Rive Community](https://rive.app/community/files/205-385-zombie-character/)
+- Zombie animations: [Rive Community](https://rive.app/community/files/205-385-zombie-character/)
+- Original counter design: last year's Node version
