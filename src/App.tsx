@@ -5,11 +5,23 @@ import { StatsDisplay } from './components/StatsDisplay';
 import { ZombieHorde } from './components/ZombieHorde';
 import { LightningCanvas } from './components/LightningCanvas';
 import { DroolingRain } from './components/DroolingRain';
+import { Game } from './components/Game';
 import { useCounter } from './hooks/useCounter';
 import { useStats } from './hooks/useStats';
 import './App.css';
 
+// Cheap router for /game route
+function usePath() {
+  return window.location.pathname;
+}
+
 function App() {
+  const path = usePath();
+
+  if (path === '/game') {
+    return <Game />;
+  }
+
   const counter = useCounter();
 
   const stats = useStats(

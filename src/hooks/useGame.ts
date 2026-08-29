@@ -1,0 +1,115 @@
+import { useEffect, useRef, useState } from 'react';
+
+export type GameMessage =
+  | { type: 'game_started'; sessionId: string }
+  | { type: 'game_start_denied'; reason: string }
+  | { type: 'zombie_spawned'; zombieId: string; direction: number }
+  | { type: 'zombie_missed'; zombieId: string }
+  | { type: 'game_ended'; score: number };
+
+interface UseGameOptions {
+  url: string;
+}
+
+export function useGame({ url }: UseGameOptions) {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentZombies, setCurrentZombies] = useState<Array<{ id: string; direction: number }>>([]);
+  const [score, setScore] = useState(0);
+  const [finalScore, setFinalScore] = useState<number | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  const connect = () => {
+    const ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      setIsConnected(true);
+      console.log('[Game] connected');
+    };
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data) as GameMessage;
+
+      switch (msg.type) {
+        case 'game_started':
+          setIsPlaying(true);
+          setCurrentZombies([]);
+          setScore(0);
+          setFinalScore(null);
+          break;
+
+        case 'game_start_denied':
+          alert('Game already in progress');
+          break;
+
+        case 'zombie_spawned':
+          setCurrentZombies(prev => [...prev, { id: msg.zombieId, direction: msg.direction }]);
+          break;
+
+        case 'zombie_missed':
+          setCurrentZombies(prev => prev.filter(z => z.id !== msg.zombieId));
+          setScore(prev => prev - 1);
+          break;
+
+        case 'game_ended':
+          setIsPlaying(false);
+          setFinalScore(msg.score);
+          break;
+      }
+    };
+
+    ws.onclose = () => {
+      setIsConnected(false);
+      setIsPlaying(false);
+    };
+
+    ws.onerror = (err) => {
+      console.error('[Game] ws error', err);
+      setIsConnected(false);
+    };
+
+    wsRef.current = ws;
+  };
+
+  const disconnect = () => {
+    wsRef.current?.close();
+    wsRef.current = null;
+    setIsConnected(false);
+    setIsPlaying(false);
+  };
+
+  const sendMessage = (msg: Record<string, unknown>) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(msg));
+    }
+  };
+
+  const startGame = () => {
+    sendMessage({ type: 'game_start' });
+  };
+
+  const hitZombie = (zombieId: string) => {
+    sendMessage({ type: 'zombie_hit', zombieId });
+  };
+
+  const endGame = () => {
+    sendMessage({ type: 'game_end' });
+  };
+
+  useEffect(() => {
+    return () => disconnect();
+  }, []);
+
+  return {
+    isConnected,
+    isPlaying,
+    currentZombies,
+    score,
+    finalScore,
+    connect,
+    disconnect,
+    startGame,
+    hitZombie,
+    endGame,
+  };
+}
