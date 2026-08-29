@@ -107,17 +107,17 @@ export const StatsPage = () => {
                   <XAxis
                     dataKey="minute"
                     tick={{ fill: '#fff', fontSize: 10 }}
-                    tickFormatter={(v: string) => {
-                      try { return new Date(v).toLocaleTimeString(); }
-                      catch { return v; }
+                    tickFormatter={(v) => {
+                      try { return new Date(String(v)).toLocaleTimeString(); }
+                      catch { return String(v); }
                     }}
                   />
                   <YAxis tick={{ fill: '#fff' }} />
                   <Tooltip
                     contentStyle={{ background: '#333', border: 'none' }}
-                    labelFormatter={(v: string) => {
-                      try { return new Date(v).toLocaleString(); }
-                      catch { return v; }
+                    labelFormatter={(v) => {
+                      try { return new Date(String(v)).toLocaleString(); }
+                      catch { return String(v); }
                     }}
                   />
                   <Bar dataKey="count" fill="#e67e22" />
