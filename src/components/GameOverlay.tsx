@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSSE, SSEMessage } from '../hooks/useSSE';
+import { useSSE } from '../hooks/useSSE';
+import type { SSEMessage } from '../hooks/useSSE';
 
 interface Sprite {
   id: string;
