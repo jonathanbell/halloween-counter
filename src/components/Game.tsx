@@ -1,38 +1,13 @@
+import { useEffect, useRef, useState } from 'react';
 import { useGame } from '../hooks/useGame';
 
-// Canvas-generated share image (final score + hashtag)
-function shareScore(score: number): void {
-  const hashtag = '#HalloweenCandyCounter2026';
-  const canvas = document.createElement('canvas');
-  canvas.width = 800;
-  canvas.height = 500;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+const GAME_DURATION_MS = 30_000;
+const TICK_INTERVAL_MS = 500;
 
-  // backdrop
-  ctx.fillStyle = '#1a1a2e';
-  ctx.fillRect(0, 0, 800, 500);
-
-  // decorations
-  ctx.fillStyle = '#9b59b6';
-  ctx.font = 'bold 32px monospace';
-  ctx.fillText('🧟 Whack-a-Zombie 🎮', 80, 80);
-
-  // score + message
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 120px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(String(score), 400, 280);
-
-  ctx.fillStyle = '#e67e22';
-  ctx.font = 'bold 24px monospace';
-  ctx.fillText(hashtag, 400, 360);
-
-  const url = canvas.toDataURL('image/png');
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `whack-a-zombie-score-${score}.png`;
-  link.click();
+interface ActiveZombie {
+  id: string;
+  direction: 0 | 1;
+  expiresAt: number;
 }
 
 export const Game = () => {
@@ -48,88 +23,128 @@ export const Game = () => {
     endGame,
   } = useGame({ url: 'ws://localhost:8080/ws/game' });
 
-  const handleConnect = () => {
-    connect();
-  };
+  const [timeRemainingMs, setTimeRemainingMs] = useState(GAME_DURATION_MS);
+  const startTimeRef = useRef<number | null>(null);
 
-  const handleStartGame = () => {
-    startGame();
-  };
+  useEffect(() => {
+    if (!isPlaying) return;
+    startTimeRef.current = Date.now();
+    setTimeRemainingMs(GAME_DURATION_MS);
 
-  const handleHit = (zombieId: string) => {
-    hitZombie(zombieId);
-  };
+    const timer = window.setInterval(() => {
+      const elapsed = Date.now() - (startTimeRef.current ?? Date.now());
+      setTimeRemainingMs(Math.max(0, GAME_DURATION_MS - elapsed));
+    }, TICK_INTERVAL_MS);
 
-  const handleEndGame = () => {
-    endGame();
+    return () => window.clearInterval(timer);
+  }, [isPlaying]);
+
+  const visibleZombies: ActiveZombie[] = currentZombies.map(z => ({
+    id: z.id,
+    direction: (z.direction === 1 ? 1 : 0) as 0 | 1,
+    expiresAt: Date.now() + 3000,
+  }));
+
+  const handleZoneTap = (direction: 0 | 1) => {
+    // Find most recent zombie with matching direction
+    const candidates = visibleZombies.filter(z => z.direction === direction);
+    if (candidates.length === 0) return;
+
+    const target = candidates[0];
+    hitZombie(target.id);
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'monospace', backgroundColor: '#1a1a1a', color: '#fff', minHeight: '100vh' }}>
-      <h1>Whack-a-Zombie Game</h1>
+    <div className="game-page">
+      <h1>🧟 Whack-a-Zombie 🎮</h1>
 
-      <div style={{ marginBottom: '20px' }}>
-        {!isConnected && (
-          <button onClick={handleConnect} style={{ padding: '10px 20px', fontSize: '16px' }}>
-            Connect to Game
-          </button>
-        )}
+      {!isConnected && (
+        <button className="primary-btn" onClick={connect}>
+          Connect to Game
+        </button>
+      )}
 
-        {isConnected && !isPlaying && finalScore === null && (
-          <button onClick={handleStartGame} style={{ padding: '10px 20px', fontSize: '16px' }}>
-            Start Game
-          </button>
-        )}
+      {isConnected && !isPlaying && finalScore === null && (
+        <button className="primary-btn" onClick={startGame}>
+          Start Game
+        </button>
+      )}
 
-        {isPlaying && (
-          <>
-            <div style={{ marginBottom: '10px', fontSize: '24px' }}>
-              Score: <strong>{score}</strong>
-            </div>
+      {isPlaying && (
+        <>
+          <div className="score-timer">
+            <div className="score">Score: {score}</div>
+            <div className="timer">{(timeRemainingMs / 1000).toFixed(0)}s</div>
+          </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-              {currentZombies.map((zombie) => (
-                <button
-                  key={zombie.id}
-                  onClick={() => handleHit(zombie.id)}
-                  style={{
-                    padding: '20px',
-                    fontSize: '20px',
-                    backgroundColor: zombie.direction === 0 ? '#ff6b6b' : '#4ecdc4',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {zombie.direction === 0 ? '← LEFT' : 'RIGHT →'} Zombie
-                </button>
+          <div className="touch-zones">
+            <button
+              className="touch-zone left"
+              onPointerDown={() => handleZoneTap(0)}
+            >
+              {visibleZombies.filter(z => z.direction === 0).map(z => (
+                <span key={z.id} className="floating-zombie">🧟</span>
               ))}
-            </div>
-
-            <button onClick={handleEndGame} style={{ padding: '10px 20px', fontSize: '16px' }}>
-              End Game
-            </button>
-          </>
-        )}
-
-      {finalScore !== null && (
-        <div style={{ marginTop: '20px' }}>
-          <h2>Game Over!</h2>
-          <p>Final Score: {finalScore}</p>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button onClick={handleStartGame} style={{ padding: '10px 20px', fontSize: '16px' }}>
-              Play Again
             </button>
             <button
-              onClick={() => shareScore(finalScore)}
-              style={{ padding: '10px 20px', fontSize: '16px', background: '#e67e22', color: '#fff', border: 'none', borderRadius: '6px' }}
+              className="touch-zone right"
+              onPointerDown={() => handleZoneTap(1)}
             >
+              {visibleZombies.filter(z => z.direction === 1).map(z => (
+                <span key={z.id} className="floating-zombie">🧟</span>
+              ))}
+            </button>
+          </div>
+
+          <button className="end-btn" onClick={endGame}>
+            End Game Early
+          </button>
+        </>
+      )}
+
+      {finalScore !== null && (
+        <div className="final-score">
+          <h2>Game Over!</h2>
+          <div className="final-score-value">{finalScore}</div>
+          <div className="action-row">
+            <button className="primary-btn" onClick={startGame}>Play Again</button>
+            <button className="primary-btn share" onClick={() => shareScore(finalScore)}>
               📸 Share Score
             </button>
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 };
+
+function shareScore(score: number): void {
+  const hashtag = '#HalloweenCandyCounter2026';
+  const canvas = document.createElement('canvas');
+  canvas.width = 800;
+  canvas.height = 500;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, 800, 500);
+
+  ctx.fillStyle = '#9b59b6';
+  ctx.font = 'bold 32px monospace';
+  ctx.fillText('🧟 Whack-a-Zombie 🎮', 80, 80);
+
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 120px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(String(score), 400, 280);
+
+  ctx.fillStyle = '#e67e22';
+  ctx.font = 'bold 24px monospace';
+  ctx.fillText(hashtag, 400, 360);
+
+  const url = canvas.toDataURL('image/png');
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `whack-a-zombie-score-${score}.png`;
+  link.click();
+}

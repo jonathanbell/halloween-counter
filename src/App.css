@@ -181,3 +181,104 @@
   color: rgba(255, 255, 255, 0.5);
   font-size: 1.4rem;
 }
+
+/* Game controller page (phone UI) */
+.game-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0a1e 0%, #1a1a3e 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px;
+  font-family: monospace;
+}
+
+.primary-btn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.game-page h1 {
+  margin-bottom: 24px;
+}
+
+.score-timer {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.touch-zones {
+  display: flex;
+  width: 100%;
+  max-width: 480px;
+  height: 60vh;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.touch-zone {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+.touch-zone:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.floating-zombie {
+  display: block;
+  font-size: 2.5rem;
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: bob 1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-10px); }
+}
+
+.end-btn {
+  padding: 12px 24px;
+  background: rgba(220, 38, 38, 0.7);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.final-score h2 { margin-bottom: 8px; font-size: 2rem; }
+.final-score-value { font-size: 5rem; font-weight: 800; color: #e67e22; margin-bottom: 24px; }
+
+.action-row {
+  display: flex;
+  gap: 12px;
+}
+
+.primary-btn.share {
+  background: #e67e22;
+}
