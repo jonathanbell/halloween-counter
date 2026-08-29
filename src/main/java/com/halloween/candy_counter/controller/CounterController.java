@@ -1,0 +1,42 @@
+package com.halloween.candy_counter.controller;
+
+import com.halloween.candy_counter.model.Event;
+import com.halloween.candy_counter.service.CounterService;
+import com.halloween.candy_counter.service.SseBroadcaster;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import jakarta.validation.Valid;
+import java.util.Objects;
+
+@RestController
+@RequestMapping("/api")
+public class CounterController {
+
+    private final CounterService counterService;
+    private final SseBroadcaster sseBroadcaster;
+
+    public CounterController(CounterService counterService, SseBroadcaster sseBroadcaster) {
+        this.counterService = counterService;
+        this.sseBroadcaster = sseBroadcaster;
+    }
+
+    @PostMapping(value = "/counter", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Event increment(@Valid @RequestBody IncrementRequest request) {
+        return counterService.increment(request.year());
+    }
+
+    @GetMapping("/events")
+    public SseEmitter streamEvents() {
+        return sseBroadcaster.subscribe();
+    }
+
+    public record IncrementRequest(Integer year) {}
+}
