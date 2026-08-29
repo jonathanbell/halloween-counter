@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import jakarta.validation.Valid;
-import java.util.Objects;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -31,6 +31,11 @@ public class CounterController {
     @PostMapping(value = "/counter", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Event increment(@Valid @RequestBody IncrementRequest request) {
         return counterService.increment(request.year());
+    }
+
+    @GetMapping("/state")
+    public Map<String, Object> state(@RequestParam(defaultValue = "2026") Integer year) {
+        return counterService.getState(year);
     }
 
     @GetMapping("/events")

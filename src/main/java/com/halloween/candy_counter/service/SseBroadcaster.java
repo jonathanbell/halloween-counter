@@ -2,6 +2,7 @@ package com.halloween.candy_counter.service;
 
 import com.halloween.candy_counter.domain.EventMessage;
 import com.halloween.candy_counter.repository.EventRepository;
+import com.halloween.candy_counter.repository.SettingsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -21,10 +22,14 @@ public class SseBroadcaster {
 
     private final List<SseEmitter> subscribers = new CopyOnWriteArrayList<>();
     private final EventRepository eventRepository;
+    private final SettingsRepository settingsRepository;
     private final ObjectMapper objectMapper;
 
-    public SseBroadcaster(EventRepository eventRepository, ObjectMapper objectMapper) {
+    public SseBroadcaster(EventRepository eventRepository,
+                          SettingsRepository settingsRepository,
+                          ObjectMapper objectMapper) {
         this.eventRepository = eventRepository;
+        this.settingsRepository = settingsRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -43,15 +48,31 @@ public class SseBroadcaster {
     public void broadcast(CounterService.CounterUpdatedEvent event) {
         if (subscribers.isEmpty()) return;
 
-        // Reload totals within the view (heavy query every event).
-        Long total = eventRepository.sumIncrementsByYear(event.getEvent().getYear());
+        Integer year = event.getEvent().getYear();
+        Long eventTotal = eventRepository.sumIncrementsByYear(year);
+        int adjustment = settingsRepository.findByYear(year)
+            .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
+            .orElse(0);
+        long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
+
         EventMessage envelope = new EventMessage(
             event.getEvent().getType(),
-            event.getEvent().getYear(),
-            total != null ? total.intValue() : null,
+            year,
+            (int) total,
             event.getEvent().getTimestamp()
         );
 
+        sendToSubscribers(envelope);
+    }
+
+    public void broadcastCountSnapshot(Integer year) {
+        if (subscribers.isEmpty()) return;
+        Long eventTotal = eventRepository.sumIncrementsByYear(year);
+        int adjustment = settingsRepository.findByYear(year)
+            .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
+            .orElse(0);
+        long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
+        EventMessage envelope = new EventMessage("increment", year, (int) total, java.time.Instant.now());
         sendToSubscribers(envelope);
     }
 

@@ -27,4 +27,13 @@ public class SettingsService {
         settings.setInitialCandyCount(initialCandyCount);
         return settingsRepository.save(settings);
     }
+
+    @Transactional
+    public Settings updateFullSettings(Integer year, Integer initialCandyCount, Integer countAdjustment) {
+        Optional<Settings> existing = settingsRepository.findByYear(year);
+        Settings settings = existing.orElse(new Settings(year, initialCandyCount != null ? initialCandyCount : 300));
+        if (initialCandyCount != null) settings.setInitialCandyCount(initialCandyCount);
+        if (countAdjustment != null) settings.setCountAdjustment(countAdjustment);
+        return settingsRepository.save(settings);
+    }
 }
