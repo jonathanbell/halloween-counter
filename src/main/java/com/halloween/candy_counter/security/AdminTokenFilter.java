@@ -42,11 +42,14 @@ public class AdminTokenFilter extends OncePerRequestFilter {
 
         String requiredToken = tokenService.resolveToken(tokenName);
 
-        if (requiredToken.equals(providedToken)) {
-            chain.doFilter(request, response);
-        } else {
+        // A blank configured token must never authenticate anything (e.g. an
+        // env var set to the empty string matching an empty ?token= param)
+        if (requiredToken == null || requiredToken.isBlank() || !requiredToken.equals(providedToken)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("{\"error\":\"invalid_token\"}");
+            return;
         }
+
+        chain.doFilter(request, response);
     }
 }

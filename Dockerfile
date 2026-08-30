@@ -15,12 +15,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 # Copy the jar and start script
 COPY --from=builder /app/target/candy-counter-*.jar /app/app.jar
 
-# Environment vars for server
+# Environment vars for server. ADMIN_TOKEN / SETTINGS_TOKEN deliberately
+# have no defaults here: baking empty strings would override the app's
+# fallbacks - supply them at run time
 ENV DATABASE_URL=jdbc:postgresql://postgres:5432/candy?tcpKeepAlive=true&stringtype=unspecified \
     DATABASE_USER=candy_user \
-    DATABASE_PASSWORD= \
-    ADMIN_TOKEN= \
-    SETTINGS_TOKEN=
+    DATABASE_PASSWORD=
 
 EXPOSE 8080
 

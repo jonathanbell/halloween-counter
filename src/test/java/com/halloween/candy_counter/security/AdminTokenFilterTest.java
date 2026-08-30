@@ -72,6 +72,21 @@ class AdminTokenFilterTest {
     }
 
     @Test
+    void blankConfiguredTokenRejectsEverything() throws Exception {
+        when(tokenService.resolveToken("admin")).thenReturn("");
+        when(request.getRequestURI()).thenReturn("/api/counter");
+        when(request.getParameter("token")).thenReturn("");
+
+        StringWriter sw = new StringWriter();
+        when(response.getWriter()).thenReturn(new PrintWriter(sw));
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        verify(chain, never()).doFilter(request, response);
+    }
+
+    @Test
     void settingsEndpointUsesSettingsToken() throws Exception {
         when(request.getRequestURI()).thenReturn("/api/settings");
         when(request.getParameter("token")).thenReturn("settings-token");
