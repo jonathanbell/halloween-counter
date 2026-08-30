@@ -213,7 +213,7 @@ avoid collisions with reserved SQL keywords in H2 + PG.
 ```
 src/test/java/com/halloween/candy_counter
 ├── service
-│   ├── CounterServiceTest      increment/vote aggregation + havegetState
+│   ├── CounterServiceTest      increment/vote aggregation + getState
 │   ├── SettingsServiceTest     update + full-update paths
 │   └── GameServiceTest         start/hit/miss/end game
 └── security
@@ -281,7 +281,7 @@ Run:  `docker run -p 8080:8080 -e DATABASE_URL=... -e ADMIN_TOKEN=... candy-coun
    vote writes. Token travels via query param or header — order not
    essential. Both admin + settings tokens exist.
 6. **Events table records everything.** In the schema the line is drawn to
-   avoid operational CRSD pain: every "thing that happens" (increment,
+   avoid operational CRUD pain: every "thing that happens" (increment,
    vote, lightning, rain, hit/miss values) goes into `events`. That means
    statistics are meaningful per event. The 2026 plan keeps that.
 7. **count_adjustment in settings over deleting/repairing events.** Ways
@@ -297,7 +297,7 @@ Run:  `docker run -p 8080:8080 -e DATABASE_URL=... -e ADMIN_TOKEN=... candy-coun
    disallow and a broadcast to SSE subscribers when an active one passes.
 10. **Auto-end game after 30s.** Server ends game when the sequence of
     spawns/protagonist's rolling client misses ZOMBIE_TTL reaches
-    GAME_DURATION_MS. This avoidss stuck states in the projection UI in
+    GAME_DURATION_MS. This avoids stuck states in the projection UI in
     case the controller closes.
 11. **Recharts for charts only.** Custom CSS styled UI needs careful theming.
     Recharts shows its own styling for bar charts; it doesn't brawl

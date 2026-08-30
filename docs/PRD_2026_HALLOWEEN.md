@@ -237,7 +237,7 @@ Effect does NOT affect data or statistics (projection only).
 Server state:
 - **Connection limit: SSR 100 concurrent connections** (randomly generous for game)
 - **Session store: none** (game sessions ephemeral)
-- **Memory: < 512 MB** hard cap possible (demo purposes, delete old logs, exchange rate server if it will fight ezch other).
+- **Memory: < 512 MB** hard cap possible (demo purposes, delete old logs, exchange rate server if it will fight each other).
 
 ### Migration Scripts (Flyway)
 

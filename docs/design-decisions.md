@@ -30,7 +30,7 @@ All events (increment, vote, lightning, rain) record into one `events` table wit
 
 Developers can run `mvn spring-boot:run -Dspring-boot.run.profiles=local` without a Postgres container. The H2 URL uses PostgreSQL syntax `jdbc:h2:mem:candydb;MODE=PostgreSQL`. Freight is the local-only profile enabled. Caps on comments within SQL scripts.
 
-**Decision:** H2 only when running local; Postgres in produciton.
+**Decision:** H2 only when running local; Postgres in production.
 
 ## ADR-006: Quoted "year"/"timestamp" identifiers
 
@@ -40,7 +40,7 @@ Both H2 and Postgres treat `year` and `timestamp` as reserved keywords. Extracti
 
 ## ADR-007: count_adjustment over event deletion
 
-Setting totals manually (e.g., "redirected the marks") is achieved by breaking a adjustement column into `settings`, added as an offset to the `events` SUM. This preserves event history.
+Setting totals manually (e.g., "redirected the marks") is achieved by adding an adjustment column to `settings`, added as an offset to the `events` SUM. This preserves event history.
 
 **Decision:** `count_adjustment` joins options write to projections +- event history.
 
