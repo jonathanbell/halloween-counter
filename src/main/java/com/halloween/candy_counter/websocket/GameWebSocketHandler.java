@@ -30,6 +30,12 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             JsonNode payload = objectMapper.readTree(message.getPayload());
             String type = payload.has("type") ? payload.get("type").asText() : null;
 
+            // A string switch NPEs on null, which would masquerade as internal_error
+            if (type == null) {
+                session.sendMessage(new TextMessage("{\"type\":\"error\",\"reason\":\"unknown_type\"}"));
+                return;
+            }
+
             switch (type) {
                 case "game_start" -> handleGameStart(session, payload);
                 case "zombie_hit" -> handleZombieHit(session, payload);

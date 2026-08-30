@@ -24,6 +24,10 @@ export const useSSE = (url: string): UseSSEReturn => {
   const reconnectTimeoutRef = useRef<number | null>(null);
   const listenersRef = useRef<Array<(msg: SSEMessage) => void>>([]);
 
+  // Ref mirrors the state so the onerror closure sees the live count;
+  // reading the state there is stale (connect captures the mount-time value)
+  const reconnectAttemptsRef = useRef(0);
+
   const registerListener = useCallback((cb: (msg: SSEMessage) => void) => {
     listenersRef.current.push(cb);
     return () => {
@@ -43,6 +47,7 @@ export const useSSE = (url: string): UseSSEReturn => {
       console.log('[SSE] Connection established');
       setIsConnected(true);
       setError(null);
+      reconnectAttemptsRef.current = 0;
       setReconnectAttempts(0);
     };
 
@@ -62,7 +67,8 @@ export const useSSE = (url: string): UseSSEReturn => {
       setError('Connection lost');
       eventSource.close();
 
-      const attempts = reconnectAttempts + 1;
+      const attempts = reconnectAttemptsRef.current + 1;
+      reconnectAttemptsRef.current = attempts;
       setReconnectAttempts(attempts);
       const delay = Math.min(1000 * Math.pow(2, attempts - 1), 30000);
 
@@ -72,7 +78,7 @@ export const useSSE = (url: string): UseSSEReturn => {
 
       reconnectTimeoutRef.current = window.setTimeout(() => connect(), delay);
     };
-  }, [url, reconnectAttempts]);
+  }, [url]);
 
   useEffect(() => {
     connect();
