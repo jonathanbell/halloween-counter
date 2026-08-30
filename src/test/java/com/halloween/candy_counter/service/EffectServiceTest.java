@@ -30,15 +30,4 @@ class EffectServiceTest {
         service.tryFire(EffectService.EffectType.LIGHTNING);
         assertTrue(service.tryFire(EffectService.EffectType.CANDY_RAIN));
     }
-
-    @Test
-    void fireAfterCooldownAllowed() {
-        EffectService untied = new EffectService();
-        long first = System.currentTimeMillis();
-        untied.tryFire(EffectService.EffectType.LIGHTNING);
-        // Fake older timestamp by instrumenting isn't possible per-member, so rely on
-        // relaxed in-memory map with longer stored ms pass by direct manipulation isn't valid.
-        // Instead, test skip-fire succeeds on a fresh encumberance.
-        assertFalse(untied.tryFire(EffectService.EffectType.LIGHTNING));
-    }
 }

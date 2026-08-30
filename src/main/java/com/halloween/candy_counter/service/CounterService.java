@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 public class CounterService {
@@ -59,7 +58,7 @@ public class CounterService {
     }
 
     public Map<String, Object> getState(Integer year) {
-        Long eventTotal = eventRepository.sumIncrementsByYear(year);
+        Long eventTotal = eventRepository.countIncrementsByYear(year);
         int adjustment = settingsRepository.findByYear(year)
             .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
             .orElse(0);

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.halloween.candy_counter.domain.GameStatusEvent;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,7 @@ public class SseBroadcaster {
         if (subscribers.isEmpty()) return;
 
         Integer year = event.getEvent().getYear();
-        Long eventTotal = eventRepository.sumIncrementsByYear(year);
+        Long eventTotal = eventRepository.countIncrementsByYear(year);
         int adjustment = settingsRepository.findByYear(year)
             .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
             .orElse(0);
@@ -67,12 +68,12 @@ public class SseBroadcaster {
 
     public void broadcastCountSnapshot(Integer year) {
         if (subscribers.isEmpty()) return;
-        Long eventTotal = eventRepository.sumIncrementsByYear(year);
+        Long eventTotal = eventRepository.countIncrementsByYear(year);
         int adjustment = settingsRepository.findByYear(year)
             .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
             .orElse(0);
         long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
-        EventMessage envelope = new EventMessage("increment", year, (int) total, java.time.Instant.now());
+        EventMessage envelope = new EventMessage("increment", year, (int) total, Instant.now());
         sendToSubscribers(envelope);
     }
 
@@ -104,7 +105,7 @@ public class SseBroadcaster {
         payload.put("type", "zombie_spawned");
         payload.put("zombieId", zombieId);
         payload.put("direction", direction);
-        payload.put("timestamp", java.time.Instant.now().toString());
+        payload.put("timestamp", Instant.now().toString());
         sendToSubscribers(payload);
     }
 
@@ -113,7 +114,7 @@ public class SseBroadcaster {
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", "zombie_missed");
         payload.put("zombieId", zombieId);
-        payload.put("timestamp", java.time.Instant.now().toString());
+        payload.put("timestamp", Instant.now().toString());
         sendToSubscribers(payload);
     }
 
@@ -121,7 +122,7 @@ public class SseBroadcaster {
         if (subscribers.isEmpty()) return;
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", "effect_lightning");
-        payload.put("timestamp", java.time.Instant.now().toString());
+        payload.put("timestamp", Instant.now().toString());
         sendToSubscribers(payload);
     }
 

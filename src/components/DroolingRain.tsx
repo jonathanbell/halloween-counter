@@ -54,7 +54,7 @@ export const DroolingRain = memo(({ isActive = true, externalTrigger }: Drooling
   useEffect(() => {
     if (!externalTrigger) return;
     createEmojiWave();
-  }, [externalTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [externalTrigger]);
 
   useEffect(() => {
     if (!isActive) {

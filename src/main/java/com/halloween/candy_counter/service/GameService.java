@@ -3,6 +3,7 @@ package com.halloween.candy_counter.service;
 import com.halloween.candy_counter.domain.GameStatusEvent;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.util.UUID;
@@ -176,7 +177,7 @@ public class GameService {
 
     private void sendScoreUpdate(GameSession sessionState, String result) {
         try {
-            sessionState.getSession().sendMessage(new org.springframework.web.socket.TextMessage(
+            sessionState.getSession().sendMessage(new TextMessage(
                 String.format("{\"type\":\"score_update\",\"result\":\"%s\",\"score\":%d}",
                     result, sessionState.getScore())
             ));
@@ -193,7 +194,7 @@ public class GameService {
         broadcastGameStatus(false, sessionState.getSessionId());
 
         try {
-            session.sendMessage(new org.springframework.web.socket.TextMessage(
+            session.sendMessage(new TextMessage(
                 "{\"type\":\"game_ended\",\"score\":" + finalScore + "}"
             ));
         } catch (Exception ignored) {}
@@ -216,7 +217,7 @@ public class GameService {
         sseBroadcaster.broadcastZombieSpawned(String.valueOf(zombieId), direction);
 
         try {
-            gameSession.getSession().sendMessage(new org.springframework.web.socket.TextMessage(
+            gameSession.getSession().sendMessage(new TextMessage(
                 String.format("{\"type\":\"zombie_spawned\",\"zombieId\":\"%d\",\"direction\":%d}",
                     zombieId, direction)
             ));
@@ -235,7 +236,7 @@ public class GameService {
             gameSession.addScore(MISS_SCORE);
             sseBroadcaster.broadcastZombieMissed(String.valueOf(spawn.zombieId));
             try {
-                gameSession.getSession().sendMessage(new org.springframework.web.socket.TextMessage(
+                gameSession.getSession().sendMessage(new TextMessage(
                     String.format("{\"type\":\"zombie_missed\",\"zombieId\":\"%d\"}", spawn.zombieId)
                 ));
                 sendScoreUpdate(gameSession, "miss");

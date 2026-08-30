@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Optional;
 
@@ -42,7 +43,7 @@ public class TokenService {
         Token token = tokenRepository.findById(name)
             .orElse(new Token(name, newToken));
         token.setValue(newToken);
-        token.setUpdatedAt(java.time.Instant.now());
+        token.setUpdatedAt(Instant.now());
         tokenRepository.save(token);
         return newToken;
     }

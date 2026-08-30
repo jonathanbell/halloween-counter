@@ -56,7 +56,7 @@ class CounterServiceTest {
 
     @Test
     void getStateAggregatesEventsAndAdjustment() {
-        when(eventRepository.sumIncrementsByYear(2026)).thenReturn(100L);
+        when(eventRepository.countIncrementsByYear(2026)).thenReturn(100L);
         Settings s = new Settings(2026, 300);
         s.setCountAdjustment(5);
         when(settingsRepository.findByYear(2026)).thenReturn(Optional.of(s));
@@ -70,7 +70,7 @@ class CounterServiceTest {
 
     @Test
     void getStateDefaultsWhenSettingsMissing() {
-        when(eventRepository.sumIncrementsByYear(2026)).thenReturn(null);
+        when(eventRepository.countIncrementsByYear(2026)).thenReturn(null);
         when(settingsRepository.findByYear(2026)).thenReturn(Optional.empty());
 
         Map<String, Object> state = service.getState(2026);

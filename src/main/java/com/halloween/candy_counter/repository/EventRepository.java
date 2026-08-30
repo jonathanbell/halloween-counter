@@ -11,7 +11,7 @@ import java.util.List;
 public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("SELECT COUNT(e) FROM Event e WHERE e.year = :year AND e.type = 'increment'")
-    Long sumIncrementsByYear(Integer year);
+    Long countIncrementsByYear(Integer year);
 
     @Query("SELECT e.candyType, COUNT(e) FROM Event e WHERE e.year = :year AND e.type = 'vote' GROUP BY e.candyType")
     List<Object[]> countVotesByYear(Integer year);

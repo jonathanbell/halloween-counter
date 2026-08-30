@@ -2,6 +2,7 @@ package com.halloween.candy_counter.controller;
 
 import com.halloween.candy_counter.model.Event;
 import com.halloween.candy_counter.repository.EventRepository;
+import com.halloween.candy_counter.repository.SettingsRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,10 +20,10 @@ import java.util.HashMap;
 public class StatsController {
 
     private final EventRepository eventRepository;
-    private final com.halloween.candy_counter.repository.SettingsRepository settingsRepository;
+    private final SettingsRepository settingsRepository;
 
     public StatsController(EventRepository eventRepository,
-                           com.halloween.candy_counter.repository.SettingsRepository settingsRepository) {
+                           SettingsRepository settingsRepository) {
         this.eventRepository = eventRepository;
         this.settingsRepository = settingsRepository;
     }
@@ -31,7 +32,7 @@ public class StatsController {
     public ResponseEntity<Map<String, Object>> getStats(@RequestParam(defaultValue = "2026") Integer year) {
         Map<String, Object> stats = new HashMap<>();
 
-        Long eventTotal = eventRepository.sumIncrementsByYear(year);
+        Long eventTotal = eventRepository.countIncrementsByYear(year);
         int adjustment = settingsRepository.findByYear(year)
             .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
             .orElse(0);

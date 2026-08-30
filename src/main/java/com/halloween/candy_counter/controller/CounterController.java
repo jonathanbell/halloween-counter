@@ -4,7 +4,6 @@ import com.halloween.candy_counter.model.Event;
 import com.halloween.candy_counter.service.CounterService;
 import com.halloween.candy_counter.service.SseBroadcaster;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
