@@ -5,8 +5,12 @@ RUN mvn dependency:go-offline
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-FROM eclipse-temurin:21-jre-slim
+FROM eclipse-temurin:21-jre
 WORKDIR /app
+
+# curl is not in the temurin JRE image; needed for HEALTHCHECK
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy the jar and start script
 COPY --from=builder /app/target/candy-counter-*.jar /app/app.jar
@@ -20,13 +24,14 @@ ENV DATABASE_URL=jdbc:postgresql://postgres:5432/candy?tcpKeepAlive=true&stringt
 
 EXPOSE 8080
 
-# Wait for database readiness in production
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-CMD curl -f http://localhost:8080/api/settings && true
+# Actuator health is unauthenticated; start-period covers boot + Flyway
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+CMD curl -f http://localhost:8080/actuator/health || exit 1
 
 # Run as non-root user (best practice)
 RUN groupadd -r app && useradd -r -g app app
 USER app
 
-# Java runtime tuning
-ENTRYPOINT ["java", "-Xms128m", "-Xmx384m", "-Dspring.profiles.active=production", "app.jar"]
+# Java runtime tuning. No profile flag: application.yml defaults already
+# read the production env vars (DATABASE_URL etc.)
+ENTRYPOINT ["java", "-Xms128m", "-Xmx384m", "-jar", "app.jar"]
