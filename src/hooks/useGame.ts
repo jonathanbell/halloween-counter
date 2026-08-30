@@ -5,6 +5,7 @@ export type GameMessage =
   | { type: 'game_start_denied'; reason: string }
   | { type: 'zombie_spawned'; zombieId: string; direction: number }
   | { type: 'zombie_missed'; zombieId: string }
+  | { type: 'score_update'; result: 'hit' | 'miss'; score: number }
   | { type: 'game_ended'; score: number };
 
 interface UseGameOptions {
@@ -48,7 +49,11 @@ export function useGame({ url }: UseGameOptions) {
 
         case 'zombie_missed':
           setCurrentZombies(prev => prev.filter(z => z.id !== msg.zombieId));
-          setScore(prev => prev - 1);
+          break;
+
+        case 'score_update':
+          // Server-authoritative score (covers both hits and misses)
+          setScore(msg.score);
           break;
 
         case 'game_ended':
@@ -89,6 +94,8 @@ export function useGame({ url }: UseGameOptions) {
   };
 
   const hitZombie = (zombieId: string) => {
+    // Optimistically remove so the tapped zombie disappears immediately
+    setCurrentZombies(prev => prev.filter(z => z.id !== zombieId));
     sendMessage({ type: 'zombie_hit', zombieId });
   };
 

@@ -118,6 +118,7 @@ public class GameService {
 
         if (zombieId == null) {
             sessionState.addScore(MISS_SCORE);
+            sendScoreUpdate(sessionState, "miss");
             return;
         }
 
@@ -126,6 +127,7 @@ public class GameService {
             ZombieSpawn spawn = sessionState.getZombieSpawns().get(zombieKey);
             if (spawn == null || spawn.isExpired(System.currentTimeMillis())) {
                 sessionState.addScore(MISS_SCORE);
+                sendScoreUpdate(sessionState, "miss");
                 return;
             }
 
@@ -135,6 +137,16 @@ public class GameService {
 
             // Flash lightning on the projection as hit feedback
             sseBroadcaster.broadcastEffectLightningFlash();
+            sendScoreUpdate(sessionState, "hit");
+        } catch (Exception ignored) {}
+    }
+
+    private void sendScoreUpdate(GameSession sessionState, String result) {
+        try {
+            sessionState.getSession().sendMessage(new org.springframework.web.socket.TextMessage(
+                String.format("{\"type\":\"score_update\",\"result\":\"%s\",\"score\":%d}",
+                    result, sessionState.getScore())
+            ));
         } catch (Exception ignored) {}
     }
 
@@ -189,6 +201,7 @@ public class GameService {
                 gameSession.getSession().sendMessage(new org.springframework.web.socket.TextMessage(
                     String.format("{\"type\":\"zombie_missed\",\"zombieId\":\"%d\"}", spawn.zombieId)
                 ));
+                sendScoreUpdate(gameSession, "miss");
             } catch (Exception ignored) {}
             return true;
         });
