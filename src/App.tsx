@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Counter } from './components/Counter';
 import { CandyProgress } from './components/CandyProgress';
 import { StatsDisplay } from './components/StatsDisplay';
@@ -43,6 +43,20 @@ function App() {
   // Game mode listening — render game overlay when a game session is active
   const { lastMessage } = useSSE('/api/events');
   const isGameActive = lastMessage?.type === 'game_status' && lastMessage.active;
+
+  // Effect triggers: bump counters when SSE effect events arrive
+  const [lightningTrigger, setLightningTrigger] = useState(0);
+  const [rainTrigger, setRainTrigger] = useState(0);
+
+  useEffect(() => {
+    if (!lastMessage) return;
+    if (lastMessage.type === 'effect_lightning') {
+      setLightningTrigger((t: number) => t + 1);
+    }
+    if (lastMessage.type === 'effect_candy_rain') {
+      setRainTrigger((t: number) => t + 1);
+    }
+  }, [lastMessage]);
 
   // Log connection status to console
   useEffect(() => {
@@ -89,7 +103,7 @@ function App() {
 
   return (
     <div className="app">
-      <LightningCanvas triggerOnIncrement={counter.isAnimating} />
+      <LightningCanvas triggerOnIncrement={counter.isAnimating} externalTrigger={lightningTrigger} />
 
       {isGameActive ? (
         <GameOverlay />
@@ -113,7 +127,7 @@ function App() {
             candyRemaining={counter.candyRemaining}
           />
 
-          <DroolingRain isActive={counter.candyRemaining > 0} />
+          <DroolingRain isActive={counter.candyRemaining > 0} externalTrigger={rainTrigger} />
 
           {!isProjection && <ViewerControls />}
         </div>

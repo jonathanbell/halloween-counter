@@ -13,12 +13,13 @@ interface FallingEmoji {
 
 interface DroolingRainProps {
   isActive?: boolean;
+  externalTrigger?: number; // increment to force a rain wave (SSE effect event)
 }
 
 // Mix of drooling faces and candy emojis (drooling face weighted more heavily)
 const EMOJI_POOL = ['🤤', '🤤', '🤤', '🤤', '🍬', '🍭', '🍫'];
 
-export const DroolingRain = memo(({ isActive = true }: DroolingRainProps) => {
+export const DroolingRain = memo(({ isActive = true, externalTrigger }: DroolingRainProps) => {
   const [emojis, setEmojis] = useState<FallingEmoji[]>([]);
   const nextIdRef = useRef(0);
   const lastRainRef = useRef(0);
@@ -48,6 +49,12 @@ export const DroolingRain = memo(({ isActive = true }: DroolingRainProps) => {
       setEmojis(prev => prev.filter(e => !newEmojis.some(ne => ne.id === e.id)));
     }, 7000); // Max duration + delay
   };
+
+  // External trigger (SSE effect_candy_rain event from server)
+  useEffect(() => {
+    if (!externalTrigger) return;
+    createEmojiWave();
+  }, [externalTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isActive) {

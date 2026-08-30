@@ -13,9 +13,10 @@ interface Branch {
 
 interface LightningCanvasProps {
   triggerOnIncrement?: boolean;
+  externalTrigger?: number; // increment to force a strike (SSE effect event)
 }
 
-export const LightningCanvas = memo(({ triggerOnIncrement }: LightningCanvasProps) => {
+export const LightningCanvas = memo(({ triggerOnIncrement, externalTrigger }: LightningCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const lastStrikeRef = useRef<number>(0);
@@ -144,12 +145,10 @@ export const LightningCanvas = memo(({ triggerOnIncrement }: LightningCanvasProp
     animate();
   };
 
+  // Resize handling (mount only)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
     const handleResize = () => {
       canvas.width = window.innerWidth;
@@ -158,6 +157,15 @@ export const LightningCanvas = memo(({ triggerOnIncrement }: LightningCanvasProp
 
     handleResize();
     window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
     if (triggerOnIncrement) {
       createLightning(canvas, ctx);
@@ -165,12 +173,25 @@ export const LightningCanvas = memo(({ triggerOnIncrement }: LightningCanvasProp
     }
 
     return () => {
-      window.removeEventListener('resize', handleResize);
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
   }, [triggerOnIncrement]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // External trigger (SSE effect_lightning event from server)
+  useEffect(() => {
+    if (!externalTrigger) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    createLightning(canvas, ctx);
+    lastStrikeRef.current = Date.now();
+  }, [externalTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const canvas = canvasRef.current;

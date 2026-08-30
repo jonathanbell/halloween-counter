@@ -132,6 +132,9 @@ public class GameService {
             // Hit
             sessionState.addScore(HIT_SCORE);
             sessionState.getZombieSpawns().remove(zombieKey);
+
+            // Flash lightning on the projection as hit feedback
+            sseBroadcaster.broadcastEffectLightningFlash();
         } catch (Exception ignored) {}
     }
 

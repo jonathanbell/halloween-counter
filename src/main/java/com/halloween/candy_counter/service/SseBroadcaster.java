@@ -76,6 +76,18 @@ public class SseBroadcaster {
         sendToSubscribers(envelope);
     }
 
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void broadcastEffect(CounterService.EffectEvent event) {
+        if (subscribers.isEmpty()) return;
+        Map<String, Object> payload = new HashMap<>();
+        String type = "lightning".equals(event.getEffectType())
+            ? "effect_lightning" : "effect_candy_rain";
+        payload.put("type", type);
+        payload.put("year", event.getEvent().getYear());
+        payload.put("timestamp", event.getEvent().getTimestamp().toString());
+        sendToSubscribers(payload);
+    }
+
     public void broadcastGameStatus(GameStatusEvent event) {
         if (subscribers.isEmpty()) return;
         Map<String, Object> payload = new HashMap<>();
@@ -101,6 +113,14 @@ public class SseBroadcaster {
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", "zombie_missed");
         payload.put("zombieId", zombieId);
+        payload.put("timestamp", java.time.Instant.now().toString());
+        sendToSubscribers(payload);
+    }
+
+    public void broadcastEffectLightningFlash() {
+        if (subscribers.isEmpty()) return;
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "effect_lightning");
         payload.put("timestamp", java.time.Instant.now().toString());
         sendToSubscribers(payload);
     }
