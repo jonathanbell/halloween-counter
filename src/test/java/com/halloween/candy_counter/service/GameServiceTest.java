@@ -69,6 +69,29 @@ class GameServiceTest {
     }
 
     @Test
+    void malformedZombieIdCountsAsMiss() {
+        service.startGame(session);
+        var gameSession = getSession(service, session.getId());
+
+        service.processZombieHit(session, "not-a-number");
+
+        assertEquals(GameService.MISS_SCORE, gameSession.getScore());
+    }
+
+    @Test
+    void endGameCancelsAutoEndTimer() {
+        service.startGame(session);
+        var gameSession = getSession(service, session.getId());
+        var endTask = gameSession.getEndTask();
+        assertNotNull(endTask);
+
+        service.endGame(session);
+
+        // A stale timer would end the next game started on this connection
+        assertTrue(endTask.isCancelled());
+    }
+
+    @Test
     void defaultDifficultyIsEasy() {
         service.startGame(session);
         var gameSession = getSession(service, session.getId());

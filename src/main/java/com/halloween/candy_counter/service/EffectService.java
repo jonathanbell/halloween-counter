@@ -15,7 +15,8 @@ public class EffectService {
 
     private final Map<EffectType, Long> lastFired = new EnumMap<>(EffectType.class);
 
-    public boolean tryFire(EffectType type) {
+    // Synchronized: concurrent requests must not both pass the cooldown gate
+    public synchronized boolean tryFire(EffectType type) {
         long now = System.currentTimeMillis();
         Long last = lastFired.get(type);
         if (last != null && now - last < cooldownFor(type)) return false;

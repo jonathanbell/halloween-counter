@@ -88,6 +88,7 @@ public class GameService {
         private final AtomicInteger score = new AtomicInteger();
         private ScheduledFuture<?> spawnTask;
         private ScheduledFuture<?> resolveTask;
+        private ScheduledFuture<?> endTask;
 
         public GameSession(UUID sessionId, WebSocketSession session, Difficulty difficulty) {
             this.sessionId = sessionId;
@@ -104,8 +105,10 @@ public class GameService {
 
         public void setSpawnTask(ScheduledFuture<?> task) { this.spawnTask = task; }
         public void setResolveTask(ScheduledFuture<?> task) { this.resolveTask = task; }
+        public void setEndTask(ScheduledFuture<?> task) { this.endTask = task; }
         public ScheduledFuture<?> getSpawnTask() { return spawnTask; }
         public ScheduledFuture<?> getResolveTask() { return resolveTask; }
+        public ScheduledFuture<?> getEndTask() { return endTask; }
     }
 
     @Nullable
@@ -114,8 +117,9 @@ public class GameService {
     }
 
     @Nullable
-    public UUID startGame(WebSocketSession session, Difficulty difficulty) {
-        // Concurrency gate: one active game at a time
+    public synchronized UUID startGame(WebSocketSession session, Difficulty difficulty) {
+        // Concurrency gate: one active game at a time. Synchronized so two
+        // racing game_start messages cannot both pass the isEmpty check
         if (!activeSessions.isEmpty()) return null;
 
         UUID sessionId = UUID.randomUUID();
@@ -139,8 +143,12 @@ public class GameService {
             TimeUnit.MILLISECONDS);
         gameSession.setResolveTask(resolveTask);
 
-        // Auto-end after GAME_DURATION_MS so the projection returns to counter
-        executor.schedule(() -> endGame(session), GAME_DURATION_MS, TimeUnit.MILLISECONDS);
+        // Auto-end after GAME_DURATION_MS so the projection returns to counter.
+        // Stored so an early end cancels it; a stale timer would otherwise
+        // kill the next game started on the same connection
+        ScheduledFuture<?> endTask = executor.schedule(
+            () -> endGame(session), GAME_DURATION_MS, TimeUnit.MILLISECONDS);
+        gameSession.setEndTask(endTask);
 
         return sessionId;
     }
@@ -149,30 +157,33 @@ public class GameService {
         GameSession sessionState = activeSessions.get(session.getId());
         if (sessionState == null) return;
 
-        if (zombieId == null) {
+        Difficulty difficulty = sessionState.getDifficulty();
+        Long zombieKey = parseZombieId(zombieId);
+        ZombieSpawn spawn = zombieKey != null ? sessionState.getZombieSpawns().get(zombieKey) : null;
+
+        // Missing, malformed, unknown, or expired id all count as a miss
+        if (spawn == null || spawn.isExpired(System.currentTimeMillis(), difficulty.zombieTtlMs)) {
             sessionState.addScore(MISS_SCORE);
             sendScoreUpdate(sessionState, "miss");
             return;
         }
 
+        sessionState.addScore(difficulty.hitScore);
+        sessionState.getZombieSpawns().remove(zombieKey);
+
+        // Flash lightning on the projection as hit feedback
+        sseBroadcaster.broadcastEffectLightningFlash();
+        sendScoreUpdate(sessionState, "hit");
+    }
+
+    @Nullable
+    private static Long parseZombieId(@Nullable String zombieId) {
+        if (zombieId == null) return null;
         try {
-            long zombieKey = Long.parseLong(zombieId);
-            Difficulty difficulty = sessionState.getDifficulty();
-            ZombieSpawn spawn = sessionState.getZombieSpawns().get(zombieKey);
-            if (spawn == null || spawn.isExpired(System.currentTimeMillis(), difficulty.zombieTtlMs)) {
-                sessionState.addScore(MISS_SCORE);
-                sendScoreUpdate(sessionState, "miss");
-                return;
-            }
-
-            // Hit
-            sessionState.addScore(difficulty.hitScore);
-            sessionState.getZombieSpawns().remove(zombieKey);
-
-            // Flash lightning on the projection as hit feedback
-            sseBroadcaster.broadcastEffectLightningFlash();
-            sendScoreUpdate(sessionState, "hit");
-        } catch (Exception ignored) {}
+            return Long.parseLong(zombieId);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private void sendScoreUpdate(GameSession sessionState, String result) {
@@ -251,6 +262,11 @@ public class GameService {
 
         ScheduledFuture<?> resolveTask = sessionState.getResolveTask();
         if (resolveTask != null) resolveTask.cancel(true);
+
+        // cancel(false): the auto-end task itself runs endGame -> here, and
+        // must not interrupt its own thread mid-send
+        ScheduledFuture<?> endTask = sessionState.getEndTask();
+        if (endTask != null) endTask.cancel(false);
     }
 
     private void broadcastGameStatus(boolean active, UUID sessionId) {
