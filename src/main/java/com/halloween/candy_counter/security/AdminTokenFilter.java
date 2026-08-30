@@ -1,6 +1,6 @@
 package com.halloween.candy_counter.security;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.halloween.candy_counter.service.TokenService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -13,21 +13,18 @@ import java.io.IOException;
 @Component
 public class AdminTokenFilter extends OncePerRequestFilter {
 
-    private final String adminToken;
-    private final String settingsToken;
+    private final TokenService tokenService;
 
-    public AdminTokenFilter(
-        @Value("${admin.token:default-admin-change-me}") String adminToken,
-        @Value("${admin.settings-token:default-settings-change-me}") String settingsToken) {
-        this.adminToken = adminToken;
-        this.settingsToken = settingsToken;
+    public AdminTokenFilter(TokenService tokenService) {
+        this.tokenService = tokenService;
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
         return !path.startsWith("/api/counter") &&
-               !path.startsWith("/api/settings");
+               !path.startsWith("/api/settings") &&
+               !path.startsWith("/api/tokens");
     }
 
     @Override
@@ -38,10 +35,12 @@ public class AdminTokenFilter extends OncePerRequestFilter {
             ? authHeader.substring(7)
             : request.getParameter("token");
 
-        boolean isAdminEndpoint = request.getRequestURI().startsWith("/api/counter");
-        boolean isSettingsEndpoint = request.getRequestURI().startsWith("/api/settings");
+        String path = request.getRequestURI();
+        // Token rotation requires the settings token (highest privilege)
+        String tokenName = (path.startsWith("/api/settings") || path.startsWith("/api/tokens"))
+            ? "settings" : "admin";
 
-        String requiredToken = isSettingsEndpoint ? settingsToken : adminToken;
+        String requiredToken = tokenService.resolveToken(tokenName);
 
         if (requiredToken.equals(providedToken)) {
             chain.doFilter(request, response);

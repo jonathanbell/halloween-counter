@@ -1,5 +1,6 @@
 package com.halloween.candy_counter.security;
 
+import com.halloween.candy_counter.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,6 +17,7 @@ import static org.mockito.MockitoAnnotations.openMocks;
 class AdminTokenFilterTest {
 
     AdminTokenFilter filter;
+    @Mock TokenService tokenService;
     @Mock HttpServletRequest request;
     @Mock HttpServletResponse response;
     @Mock FilterChain chain;
@@ -23,7 +25,27 @@ class AdminTokenFilterTest {
     @BeforeEach
     void setUp() {
         openMocks(this);
-        filter = new AdminTokenFilter("admin-token", "settings-token");
+        filter = new AdminTokenFilter(tokenService);
+        when(tokenService.resolveToken("admin")).thenReturn("admin-token");
+        when(tokenService.resolveToken("settings")).thenReturn("settings-token");
+    }
+
+    @Test
+    void skipsNonAdminPath() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/events");
+        org.junit.jupiter.api.Assertions.assertTrue(filter.shouldNotFilter(request));
+    }
+
+    @Test
+    void protectedPathsDoNotSkip() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/counter");
+        org.junit.jupiter.api.Assertions.assertFalse(filter.shouldNotFilter(request));
+
+        when(request.getRequestURI()).thenReturn("/api/settings");
+        org.junit.jupiter.api.Assertions.assertFalse(filter.shouldNotFilter(request));
+
+        when(request.getRequestURI()).thenReturn("/api/tokens/rotate");
+        org.junit.jupiter.api.Assertions.assertFalse(filter.shouldNotFilter(request));
     }
 
     @Test
@@ -65,5 +87,27 @@ class AdminTokenFilterTest {
 
         filter.doFilterInternal(request, response, chain);
         verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void tokenRotationRequiresSettingsToken() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/tokens/rotate");
+        when(request.getParameter("token")).thenReturn("settings-token");
+
+        filter.doFilterInternal(request, response, chain);
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    void tokenRotationRejectsAdminToken() throws Exception {
+        when(request.getRequestURI()).thenReturn("/api/tokens/rotate");
+        when(request.getParameter("token")).thenReturn("admin-token");
+
+        StringWriter sw = new StringWriter();
+        when(response.getWriter()).thenReturn(new PrintWriter(sw));
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     }
 }
