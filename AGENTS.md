@@ -235,9 +235,10 @@ Terminal A: `mvn spring-boot:run -Dspring-boot.run.profiles=local`
 
 Terminal B: `npm run dev` (Vite dev server on :5173)
 
-Vite's dev server doesn't proxy /api by default; point the frontend paths
-to `http://localhost:8080`. Or build the frontend (`npm run build`) + use
-Spring Boot's static bundle.
+Vite proxies `/api` and `/ws` to `http://localhost:8080` (see
+`vite.config.ts`), so the backend must be running for API calls to work.
+Alternatively build the frontend (`npm run build`) + use Spring Boot's
+static bundle.
 
 Fields admin tokens for local dev: `dev-admin-token` / `dev-settings-token`
 (application-local.yml).
