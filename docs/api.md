@@ -1,11 +1,21 @@
 # API Reference
 
-Complete list of endpoints, working session by session graph of several things.
+All endpoints served by the Spring Boot backend on port 8080.
+
+## Authentication
+
+Two tokens exist: **admin** (increment) and **settings** (config + token
+rotation). Pass either as `?token=<value>` or `Authorization: Bearer <value>`.
+
+Resolution order per request: `tokens` DB table row, then the
+`ADMIN_TOKEN` / `SETTINGS_TOKEN` env vars. A blank configured token never
+authenticates. Everything not listed under "Admin endpoints" below is public.
 
 ## Public endpoints
 
 ### `GET /api/state`
-Snapshot without projection event feed.
+
+Snapshot without subscribing to the event feed.
 
 ```json
 GET /api/state?year=2026
@@ -17,72 +27,80 @@ GET /api/state?year=2026
 }
 ```
 
-### `GET /api/events`
-EventSource subscription. Returns SSE stream forever (no timeout). Broadcasts typed payload:
+`currentCount = COUNT(increment events) + settings.count_adjustment`.
 
-increment / vote / effects (lifecycle):
+### `GET /api/events`
+
+EventSource subscription (SSE, no timeout). One JSON payload per message:
+
 ```json
 {"type":"increment","year":2026,"total":42,"timestamp":"..."}
-```
+{"type":"vote","year":2026,"total":42,"timestamp":"..."}
 
-game status:
-```json
-{"type":"game_status","active":true,"sessionId":"uuid","timestamp":"..."}
-{"type":"game_status","active":false,"sessionId":"uuid","timestamp":"..."}
+{"type":"effect_lightning","year":2026,"timestamp":"..."}
+{"type":"effect_candy_rain","year":2026,"timestamp":"..."}
+
+{"type":"game_status","active":true,"sessionId":"<uuid>","timestamp":"..."}
 {"type":"zombie_spawned","zombieId":"12345","direction":0,"timestamp":"..."}
 {"type":"zombie_missed","zombieId":"12345","timestamp":"..."}
 ```
 
-### `POST /api/effects/lightning` / `POST /api/effects/candy-rain`
-Trigger visual effects. Params year query-param optional.
+Notes:
+- `total` is always the increment total, even on `vote` messages.
+- A zombie hit also emits `effect_lightning` (no `year` field) so the
+  projection flashes.
+- Game messages mirror the WebSocket so the projection renders visuals
+  without holding a WS connection.
 
+### `POST /api/effects/lightning` / `POST /api/effects/candy-rain`
+
+Trigger projection visuals. `year` query param optional (default 2026).
+Server-side cooldown of 7s per effect type; within cooldown:
+
+```json
+HTTP 429 {"error": "effect_cooldown"}
 ```
-POST /api/effects/lightning?year=2026  → event saved + 200
-POST /api/effects/candy-rain?year=2026 → event saved + 200
-```
+
+On success the event is persisted and broadcast over SSE.
 
 ### `POST /api/vote`
-Public vote for favorite candy. Body `VoteRequest`.
+
+Public vote for favorite candy. Stored as an event with `type='vote'`.
 
 ```json
 POST /api/vote
 { "year": 2026, "candyType": "snickers" }
 ```
 
-Stores candyType in `events` with type='vote'.
-
 ### `GET /api/stats`
-Aggregated statistics for graphs.
+
+Aggregates for the charts. Cross-year via `?year=2025` etc.
 
 ```json
 GET /api/stats?year=2026
 {
   "total": 42,
-  "votes": {"snickers": 5, "m&ms": 3},
-  "histogram": [
-    { "minute": "...", "count": 5 },
-    { "minute": "...", "count": 3 }
-  ]
+  "votes": { "snickers": 5, "m&ms": 3 },
+  "histogram": [ { "minute": "2026-10-31T18:04:00Z", "count": 5 } ]
 }
 ```
 
-History cross-year uses `stats?year=2025` etc.
+## Admin endpoints
 
-## Admin endpoints (token)
+### `POST /api/counter` (admin token)
 
-### `POST /api/counter`
-Increment counter.
+Increment by one. Persists an event, then broadcasts the new total over SSE
+after commit.
 
 ```json
-POST /api/counter (admin-token)
+POST /api/counter
 { "year": 2026 }
 ```
 
-### `GET /api/settings`
-Fetch settings + current tally.
+### `GET /api/settings` (settings token)
 
 ```json
-GET /api/settings?year=2026 (settings-token)
+GET /api/settings?year=2026
 {
   "year": 2026,
   "initialCandyCount": 300,
@@ -93,50 +111,83 @@ GET /api/settings?year=2026 (settings-token)
 }
 ```
 
-### `POST /api/settings`
-Update settings. Body: any missing field not updated.
+404 when no settings row exists for the year.
+
+### `POST /api/settings` (settings token)
+
+Missing fields are left unchanged. `currentTotal` is translated to
+`countAdjustment = currentTotal - eventTotal`, preserving event history.
+Pushes a count snapshot to all SSE clients.
 
 ```json
-POST /api/settings (settings-token)
+POST /api/settings
 { "year": 2026, "initialCandyCount": 400, "currentTotal": 42 }
 ```
 
-`currentTotal` is renamed internal value countAdjustment = currentTotal - eventTotal.
+### `POST /api/tokens/rotate` (settings token)
 
-## WebSocket (`/ws/game`)
+Generates a new 48-hex-char token, stored in the `tokens` table (overrides
+the env var from then on). Valid names: `"admin"`, `"settings"`.
 
-Client renders JS on phones and makes pretty messages.
+```json
+POST /api/tokens/rotate
+{ "name": "admin" }
 
-### Client → Server
+{ "name": "admin", "token": "a1b2c3...", "warning": "QR codes must be regenerated: ..." }
+```
+
+QR codes embed tokens in URLs, so re-run `npm run qr` and re-print after
+rotating. Emergency recovery: `DELETE FROM tokens;` falls back to env vars.
+
+## WebSocket: `/ws/game`
+
+Text frames, one JSON object each. One game session globally; a second
+`game_start` while one is active is denied.
+
+### Client to server
 
 ```json
 { "type": "game_start" }
-{ "type": "zombie_hit" }          // missing zombieId → -1 score
-{ "type": "zombie_hit", "zombieId": "123" } // hit active zombie → +1 score
+{ "type": "game_start", "difficulty": "easy" }   // easy | hard | lightning
+{ "type": "zombie_hit", "zombieId": "123" }
 { "type": "game_end" }
 ```
 
-### Server → Client
+Unknown or missing `difficulty` falls back to `easy`. A `zombie_hit` with a
+missing, malformed, unknown, or expired `zombieId` counts as a miss (-1).
+
+### Server to client
 
 ```json
-{ "type": "game_started", "sessionId": "uuid" }
+{ "type": "game_started", "sessionId": "<uuid>" }
 { "type": "game_start_denied", "reason": "already_active" }
-{ "type": "zombie_spawned", "zombieId": "123", "direction": 0 }  // direction: 0 = left, 1 = right
+{ "type": "zombie_spawned", "zombieId": "123", "direction": 0 }   // 0=left, 1=right
 { "type": "zombie_missed", "zombieId": "123" }
+{ "type": "score_update", "result": "hit", "score": 3 }           // authoritative
 { "type": "game_ended", "score": 7 }
+{ "type": "error", "reason": "unknown_type" }
 ```
 
-Direction identifiers come from the spawn graphs. `zombieId` is a `long` treated as a number, positive within JS's max-safe-integer and it has any valid varying values when the callback sequence finishes.
+`zombieId` is a server-generated long, sent as a string.
 
-## Pictorially
+### Difficulty levels
+
+| Level | Spawn interval | Zombie TTL | Hit score | Max concurrent |
+|-----------|------|--------|----|---|
+| easy | 600ms | 3000ms | +1 | 1 |
+| hard | 400ms | 2000ms | +1 | 3 |
+| lightning | 500ms | 1500ms | +2 | 1 |
+
+Miss is always -1. Games auto-end after 30s; a disconnect ends the game
+immediately.
+
+## Increment flow
 
 ```
 Client → POST /api/counter {"year":2026}
-        ↓ (CounterService increments)
-        ↓ (AFTER_COMMIT event publish)
-        ↓ SseBroadcaster.send(total message)
-        ↓ EventSource gets {..., total: 42}
-        ↓ Client updates big numbers
+        ↓ CounterService saves the event
+        ↓ AFTER_COMMIT event listener fires
+        ↓ SseBroadcaster re-reads the total
+        ↓ every EventSource gets {"type":"increment","total":42,...}
+        ↓ clients update the big number
 ```
-
-Session starters are makes completed uncompleted events, let's mutex together promotion files from the package.

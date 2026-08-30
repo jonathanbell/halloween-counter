@@ -5,13 +5,7 @@ plus known deployment blockers.
 
 ## Deployment blockers
 
-- [ ] `Game.tsx` hardcodes `ws://localhost:8080/ws/game` - derive from
-      `location.host` (`wss:` when served over https) so the game works
-      off-localhost
 - [ ] `useCounter.ts` falls back to the literal `dev-admin-token` in source
-- [ ] Dockerfile sets `ADMIN_TOKEN=` / `SETTINGS_TOKEN=` to empty strings; an
-      empty `?token=` param would then match. Drop the defaults or fail fast
-      on blank tokens at startup
 
 ## Game (PRD 5-6)
 
@@ -48,5 +42,4 @@ plus known deployment blockers.
 ## Docs
 
 - [ ] PRD section 4 WebSocket protocol is stale (`game_action` etc.); the real
-      protocol lives in `AGENTS.md` section 4
-- [ ] `docs/architecture.md` is referenced by README but does not exist
+      protocol lives in `docs/api.md`
