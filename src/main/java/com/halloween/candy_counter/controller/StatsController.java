@@ -19,17 +19,24 @@ import java.util.HashMap;
 public class StatsController {
 
     private final EventRepository eventRepository;
+    private final com.halloween.candy_counter.repository.SettingsRepository settingsRepository;
 
-    public StatsController(EventRepository eventRepository) {
+    public StatsController(EventRepository eventRepository,
+                           com.halloween.candy_counter.repository.SettingsRepository settingsRepository) {
         this.eventRepository = eventRepository;
+        this.settingsRepository = settingsRepository;
     }
 
     @GetMapping
     public ResponseEntity<Map<String, Object>> getStats(@RequestParam(defaultValue = "2026") Integer year) {
         Map<String, Object> stats = new HashMap<>();
 
-        Long total = eventRepository.sumIncrementsByYear(year);
-        stats.put("total", total != null ? total : 0);
+        Long eventTotal = eventRepository.sumIncrementsByYear(year);
+        int adjustment = settingsRepository.findByYear(year)
+            .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
+            .orElse(0);
+        long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
+        stats.put("total", total);
 
         Map<String, Long> votes = new HashMap<>();
         for (Object[] row : eventRepository.countVotesByYear(year)) {
