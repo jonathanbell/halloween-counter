@@ -73,12 +73,15 @@ public class Event {
         if (this == o) return true;
         if (!(o instanceof Event)) return false;
         Event other = (Event) o;
-        return Objects.equals(id, other.id);
+
+        // Unsaved entities (null id) are never equal to each other
+        return id != null && Objects.equals(id, other.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        // Constant: id is assigned on persist, so it cannot feed the hash
+        return Event.class.hashCode();
     }
 
     @Override

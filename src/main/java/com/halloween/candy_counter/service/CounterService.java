@@ -1,6 +1,7 @@
 package com.halloween.candy_counter.service;
 
 import com.halloween.candy_counter.model.Event;
+import com.halloween.candy_counter.model.Settings;
 import com.halloween.candy_counter.repository.EventRepository;
 import com.halloween.candy_counter.repository.SettingsRepository;
 import org.springframework.context.ApplicationEventPublisher;
@@ -9,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class CounterService {
@@ -59,10 +61,11 @@ public class CounterService {
 
     public Map<String, Object> getState(Integer year) {
         Long eventTotal = eventRepository.countIncrementsByYear(year);
-        int adjustment = settingsRepository.findByYear(year)
+        Optional<Settings> settings = settingsRepository.findByYear(year);
+        int adjustment = settings
             .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
             .orElse(0);
-        int initialCandy = settingsRepository.findByYear(year)
+        int initialCandy = settings
             .map(s -> s.getInitialCandyCount() != null ? s.getInitialCandyCount() : 300)
             .orElse(300);
         long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
@@ -75,9 +78,9 @@ public class CounterService {
         return state;
     }
 
-    // Event with all counter-context (after commit listeners should re-read if needed)
+    // Published after the save; AFTER_COMMIT listeners re-read the total
     public static class CounterUpdatedEvent {
-        private final Event event; // not used in broadcast; just a semantic placeholder.
+        private final Event event;
 
         public CounterUpdatedEvent(Event event) {
             this.event = event;

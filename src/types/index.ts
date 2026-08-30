@@ -13,11 +13,6 @@ export interface StatsData {
   timestamps: number[];
 }
 
-export interface QueryParams {
-  currentCount?: number;
-  initialCandyCount?: number;
-}
-
 export interface ZombieInstance {
   id: string;
   number: number;
