@@ -11,8 +11,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
-import java.util.HashMap;
 
 @Service
 public class GameService {
@@ -80,8 +80,11 @@ public class GameService {
         private final UUID sessionId;
         private final WebSocketSession session;
         private final Difficulty difficulty;
-        private final Map<Long, ZombieSpawn> zombieSpawns = new HashMap<>();
-        private int score = 0;
+
+        // Touched by the WS thread (hits) and both executor tasks
+        // (spawn/resolve), so map and score must be thread-safe
+        private final Map<Long, ZombieSpawn> zombieSpawns = new ConcurrentHashMap<>();
+        private final AtomicInteger score = new AtomicInteger();
         private ScheduledFuture<?> spawnTask;
         private ScheduledFuture<?> resolveTask;
 
@@ -95,8 +98,8 @@ public class GameService {
         public WebSocketSession getSession() { return session; }
         public Difficulty getDifficulty() { return difficulty; }
         public Map<Long, ZombieSpawn> getZombieSpawns() { return zombieSpawns; }
-        public int getScore() { return score; }
-        public void addScore(int delta) { score += delta; }
+        public int getScore() { return score.get(); }
+        public void addScore(int delta) { score.addAndGet(delta); }
 
         public void setSpawnTask(ScheduledFuture<?> task) { this.spawnTask = task; }
         public void setResolveTask(ScheduledFuture<?> task) { this.resolveTask = task; }
