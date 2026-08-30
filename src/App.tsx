@@ -22,7 +22,6 @@ function usePath() {
 
 function App() {
   const path = usePath();
-  const isProjection = useProjectionMode();
 
   // Phone controller route
   if (path === '/game') {
@@ -33,6 +32,13 @@ function App() {
     return <StatsPage />;
   }
 
+  return <CounterPage />;
+}
+
+// Projection/viewer page. Own component so its hooks run unconditionally
+// (App returns early for /game and /stats)
+function CounterPage() {
+  const isProjection = useProjectionMode();
   const counter = useCounter();
   const stats = useStats(
     counter.currentCount,
