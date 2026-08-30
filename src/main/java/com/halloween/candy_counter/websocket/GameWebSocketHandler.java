@@ -10,6 +10,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.util.Locale;
 import java.util.UUID;
 
 @Component
@@ -30,7 +31,7 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             String type = payload.has("type") ? payload.get("type").asText() : null;
 
             switch (type) {
-                case "game_start" -> handleGameStart(session);
+                case "game_start" -> handleGameStart(session, payload);
                 case "zombie_hit" -> handleZombieHit(session, payload);
                 case "game_end" -> handleGameEnd(session);
                 default -> session.sendMessage(new TextMessage("{\"type\":\"error\",\"reason\":\"unknown_type\"}"));
@@ -42,8 +43,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void handleGameStart(WebSocketSession session) throws Exception {
-        UUID result = gameService.startGame(session);
+    private void handleGameStart(WebSocketSession session, JsonNode payload) throws Exception {
+        UUID result = gameService.startGame(session, parseDifficulty(payload));
         if (result != null) {
             session.sendMessage(new TextMessage(
                 "{\"type\":\"game_started\",\"sessionId\":\"" + result + "\"}"
@@ -52,6 +53,17 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
             session.sendMessage(new TextMessage(
                 "{\"type\":\"game_start_denied\",\"reason\":\"already_active\"}"
             ));
+        }
+    }
+
+    // Missing or unknown difficulty falls back to EASY
+    private GameService.Difficulty parseDifficulty(JsonNode payload) {
+        if (!payload.has("difficulty")) return GameService.Difficulty.EASY;
+        try {
+            return GameService.Difficulty.valueOf(
+                payload.get("difficulty").asText().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return GameService.Difficulty.EASY;
         }
     }
 

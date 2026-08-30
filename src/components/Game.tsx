@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGame } from '../hooks/useGame';
+import type { Difficulty } from '../hooks/useGame';
 
 const GAME_DURATION_MS = 30_000;
 const TICK_INTERVAL_MS = 500;
+
+const DIFFICULTIES: Array<{ id: Difficulty; label: string }> = [
+  { id: 'easy', label: '🙂 Easy' },
+  { id: 'hard', label: '😈 Hard' },
+  { id: 'lightning', label: '⚡ Lightning' },
+];
 
 interface ActiveZombie {
   id: string;
@@ -24,6 +31,7 @@ export const Game = () => {
   } = useGame({ url: 'ws://localhost:8080/ws/game' });
 
   const [timeRemainingMs, setTimeRemainingMs] = useState(GAME_DURATION_MS);
+  const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const startTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -65,9 +73,22 @@ export const Game = () => {
       )}
 
       {isConnected && !isPlaying && finalScore === null && (
-        <button className="primary-btn" onClick={startGame}>
-          Start Game
-        </button>
+        <>
+          <div className="difficulty-row">
+            {DIFFICULTIES.map(d => (
+              <button
+                key={d.id}
+                className={`difficulty-btn ${difficulty === d.id ? 'selected' : ''}`}
+                onClick={() => setDifficulty(d.id)}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+          <button className="primary-btn" onClick={() => startGame(difficulty)}>
+            Start Game
+          </button>
+        </>
       )}
 
       {isPlaying && (
@@ -107,7 +128,7 @@ export const Game = () => {
           <h2>Game Over!</h2>
           <div className="final-score-value">{finalScore}</div>
           <div className="action-row">
-            <button className="primary-btn" onClick={startGame}>Play Again</button>
+            <button className="primary-btn" onClick={() => startGame(difficulty)}>Play Again</button>
             <button className="primary-btn share" onClick={() => shareScore(finalScore)}>
               📸 Share Score
             </button>

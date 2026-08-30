@@ -211,6 +211,27 @@
   margin-bottom: 24px;
 }
 
+.difficulty-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.difficulty-btn {
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.difficulty-btn.selected {
+  background: rgba(230, 126, 34, 0.8);
+  border-color: #e67e22;
+}
+
 .score-timer {
   width: 100%;
   max-width: 480px;

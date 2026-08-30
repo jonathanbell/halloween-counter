@@ -69,6 +69,43 @@ class GameServiceTest {
     }
 
     @Test
+    void defaultDifficultyIsEasy() {
+        service.startGame(session);
+        var gameSession = getSession(service, session.getId());
+
+        assertEquals(GameService.Difficulty.EASY, gameSession.getDifficulty());
+    }
+
+    @Test
+    void lightningHitScoresDouble() {
+        service.startGame(session, GameService.Difficulty.LIGHTNING);
+        var gameSession = getSession(service, session.getId());
+        long zombieId = 424242L;
+        gameSession.getZombieSpawns().put(zombieId,
+            new GameService.ZombieSpawn(zombieId, 0, System.currentTimeMillis()));
+
+        service.processZombieHit(session, String.valueOf(zombieId));
+
+        assertEquals(GameService.Difficulty.LIGHTNING.hitScore, gameSession.getScore());
+    }
+
+    @Test
+    void hardTtlExpiresFasterThanEasy() {
+        service.startGame(session, GameService.Difficulty.HARD);
+        var gameSession = getSession(service, session.getId());
+        long zombieId = 555L;
+
+        // Older than the HARD TTL but still alive by EASY rules
+        long age = GameService.Difficulty.HARD.zombieTtlMs + 1;
+        gameSession.getZombieSpawns().put(zombieId,
+            new GameService.ZombieSpawn(zombieId, 0, System.currentTimeMillis() - age));
+
+        service.processZombieHit(session, String.valueOf(zombieId));
+
+        assertEquals(GameService.MISS_SCORE, gameSession.getScore());
+    }
+
+    @Test
     void endGameReportsFinalScore() {
         service.startGame(session);
         var gameSession = getSession(service, session.getId());

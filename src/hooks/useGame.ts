@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+export type Difficulty = 'easy' | 'hard' | 'lightning';
+
 export type GameMessage =
   | { type: 'game_started'; sessionId: string }
   | { type: 'game_start_denied'; reason: string }
@@ -89,8 +91,8 @@ export function useGame({ url }: UseGameOptions) {
     }
   };
 
-  const startGame = () => {
-    sendMessage({ type: 'game_start' });
+  const startGame = (difficulty: Difficulty = 'easy') => {
+    sendMessage({ type: 'game_start', difficulty });
   };
 
   const hitZombie = (zombieId: string) => {

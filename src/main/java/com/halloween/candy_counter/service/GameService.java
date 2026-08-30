@@ -25,10 +25,31 @@ public class GameService {
     static final long SPAWN_INTERVAL_MS = 600;
     static final long INITIAL_SPAWN_DELAY_MS = 300;
     static final long RESOLVE_INTERVAL_MS = 500;
-    static final long RESOLVE_DELAY_MS = ZOMBIE_TTL_MS + 100;
+    static final long RESOLVE_GRACE_MS = 100;
     static final long GAME_DURATION_MS = 30_000;
     static final int HIT_SCORE = 1;
     static final int MISS_SCORE = -1;
+    static final int MAX_CONCURRENT_ZOMBIES = 3;
+
+    // PRD complexity states: easy = one zombie at a time, hard = up to 3
+    // concurrent, lightning = one fast zombie worth double points.
+    public enum Difficulty {
+        EASY(SPAWN_INTERVAL_MS, ZOMBIE_TTL_MS, HIT_SCORE, 1),
+        HARD(400, 2000, HIT_SCORE, MAX_CONCURRENT_ZOMBIES),
+        LIGHTNING(500, 1500, 2, 1);
+
+        final long spawnIntervalMs;
+        final long zombieTtlMs;
+        final int hitScore;
+        final int maxConcurrent;
+
+        Difficulty(long spawnIntervalMs, long zombieTtlMs, int hitScore, int maxConcurrent) {
+            this.spawnIntervalMs = spawnIntervalMs;
+            this.zombieTtlMs = zombieTtlMs;
+            this.hitScore = hitScore;
+            this.maxConcurrent = maxConcurrent;
+        }
+    }
 
     // Test hook: exposes sessions for unit tests
     Map<String, GameSession> getSessionsForTest() {
@@ -50,26 +71,29 @@ public class GameService {
             this.spawnTime = spawnTime;
         }
 
-        public boolean isExpired(long now) {
-            return (now - spawnTime) >= ZOMBIE_TTL_MS;
+        public boolean isExpired(long now, long ttlMs) {
+            return (now - spawnTime) >= ttlMs;
         }
     }
 
     public static class GameSession {
         private final UUID sessionId;
         private final WebSocketSession session;
+        private final Difficulty difficulty;
         private final Map<Long, ZombieSpawn> zombieSpawns = new HashMap<>();
         private int score = 0;
         private ScheduledFuture<?> spawnTask;
         private ScheduledFuture<?> resolveTask;
 
-        public GameSession(UUID sessionId, WebSocketSession session) {
+        public GameSession(UUID sessionId, WebSocketSession session, Difficulty difficulty) {
             this.sessionId = sessionId;
             this.session = session;
+            this.difficulty = difficulty;
         }
 
         public UUID getSessionId() { return sessionId; }
         public WebSocketSession getSession() { return session; }
+        public Difficulty getDifficulty() { return difficulty; }
         public Map<Long, ZombieSpawn> getZombieSpawns() { return zombieSpawns; }
         public int getScore() { return score; }
         public void addScore(int delta) { score += delta; }
@@ -82,11 +106,16 @@ public class GameService {
 
     @Nullable
     public UUID startGame(WebSocketSession session) {
+        return startGame(session, Difficulty.EASY);
+    }
+
+    @Nullable
+    public UUID startGame(WebSocketSession session, Difficulty difficulty) {
         // Concurrency gate: one active game at a time
         if (!activeSessions.isEmpty()) return null;
 
         UUID sessionId = UUID.randomUUID();
-        GameSession gameSession = new GameSession(sessionId, session);
+        GameSession gameSession = new GameSession(sessionId, session, difficulty);
         activeSessions.put(session.getId(), gameSession);
 
         // Announce game mode to SSE clients
@@ -95,13 +124,13 @@ public class GameService {
         ScheduledFuture<?> spawnTask = executor.scheduleWithFixedDelay(
             () -> spawnZombie(gameSession),
             INITIAL_SPAWN_DELAY_MS,
-            SPAWN_INTERVAL_MS,
+            difficulty.spawnIntervalMs,
             TimeUnit.MILLISECONDS);
         gameSession.setSpawnTask(spawnTask);
 
         ScheduledFuture<?> resolveTask = executor.scheduleWithFixedDelay(
             () -> resolveMissedZombies(gameSession),
-            RESOLVE_DELAY_MS,
+            difficulty.zombieTtlMs + RESOLVE_GRACE_MS,
             RESOLVE_INTERVAL_MS,
             TimeUnit.MILLISECONDS);
         gameSession.setResolveTask(resolveTask);
@@ -124,15 +153,16 @@ public class GameService {
 
         try {
             long zombieKey = Long.parseLong(zombieId);
+            Difficulty difficulty = sessionState.getDifficulty();
             ZombieSpawn spawn = sessionState.getZombieSpawns().get(zombieKey);
-            if (spawn == null || spawn.isExpired(System.currentTimeMillis())) {
+            if (spawn == null || spawn.isExpired(System.currentTimeMillis(), difficulty.zombieTtlMs)) {
                 sessionState.addScore(MISS_SCORE);
                 sendScoreUpdate(sessionState, "miss");
                 return;
             }
 
             // Hit
-            sessionState.addScore(HIT_SCORE);
+            sessionState.addScore(difficulty.hitScore);
             sessionState.getZombieSpawns().remove(zombieKey);
 
             // Flash lightning on the projection as hit feedback
@@ -171,6 +201,9 @@ public class GameService {
     }
 
     private void spawnZombie(GameSession gameSession) {
+        // Difficulty cap: skip this tick while enough zombies are alive
+        if (gameSession.getZombieSpawns().size() >= gameSession.getDifficulty().maxConcurrent) return;
+
         int direction = Math.random() < 0.5 ? 0 : 1;
         long zombieId = System.nanoTime();
         ZombieSpawn spawn = new ZombieSpawn(zombieId, direction, System.currentTimeMillis());
@@ -190,10 +223,11 @@ public class GameService {
     private void resolveMissedZombies(GameSession gameSession) {
         Map<Long, ZombieSpawn> spawns = gameSession.getZombieSpawns();
         long now = System.currentTimeMillis();
+        long ttlMs = gameSession.getDifficulty().zombieTtlMs;
 
         spawns.entrySet().removeIf(entry -> {
             ZombieSpawn spawn = entry.getValue();
-            if (!spawn.isExpired(now)) return false;
+            if (!spawn.isExpired(now, ttlMs)) return false;
 
             gameSession.addScore(MISS_SCORE);
             sseBroadcaster.broadcastZombieMissed(String.valueOf(spawn.zombieId));
