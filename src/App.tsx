@@ -48,7 +48,10 @@ function CounterPage() {
 
   // Game mode listening — render game overlay when a game session is active
   const { lastMessage } = useSSE('/api/events');
-  const isGameActive = lastMessage?.type === 'game_status' && lastMessage.active;
+
+  // Latched from game_status: deriving it from lastMessage directly would
+  // flip false as soon as any other SSE message arrives mid-game
+  const [isGameActive, setIsGameActive] = useState(false);
 
   // Effect triggers: bump counters when SSE effect events arrive
   const [lightningTrigger, setLightningTrigger] = useState(0);
@@ -56,6 +59,9 @@ function CounterPage() {
 
   useEffect(() => {
     if (!lastMessage) return;
+    if (lastMessage.type === 'game_status') {
+      setIsGameActive(lastMessage.active);
+    }
     if (lastMessage.type === 'effect_lightning') {
       setLightningTrigger((t: number) => t + 1);
     }

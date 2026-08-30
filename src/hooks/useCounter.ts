@@ -42,6 +42,23 @@ export const useCounter = (): UseCounterReturn => {
     }, 600);
   }, []);
 
+  // Seed from the server on mount; without this the page shows 0 and the
+  // default candy supply until the first SSE increment arrives
+  useEffect(() => {
+    fetch(`${API_BASE}/state?year=${CURRENT_YEAR}`)
+      .then(r => r.json())
+      .then(state => {
+        setLocalState(prev => ({
+          ...prev,
+          currentCount: state.currentCount,
+          candyRemaining: state.candyRemaining,
+          initialCandyCount: state.initialCandyCount,
+        }));
+        prevCountRef.current = state.currentCount;
+      })
+      .catch(err => console.error('[Counter] state fetch failed:', err));
+  }, []);
+
   // Sync local state with SSE messages
   useEffect(() => {
     if (!lastMessage) return;

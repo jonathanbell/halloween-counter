@@ -5,6 +5,9 @@ import type { Difficulty } from '../hooks/useGame';
 const GAME_DURATION_MS = 30_000;
 const TICK_INTERVAL_MS = 500;
 
+// wss when the page is https; Vite proxies /ws to the backend in dev
+const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/game`;
+
 const DIFFICULTIES: Array<{ id: Difficulty; label: string }> = [
   { id: 'easy', label: '🙂 Easy' },
   { id: 'hard', label: '😈 Hard' },
@@ -14,7 +17,6 @@ const DIFFICULTIES: Array<{ id: Difficulty; label: string }> = [
 interface ActiveZombie {
   id: string;
   direction: 0 | 1;
-  expiresAt: number;
 }
 
 export const Game = () => {
@@ -28,7 +30,7 @@ export const Game = () => {
     startGame,
     hitZombie,
     endGame,
-  } = useGame({ url: 'ws://localhost:8080/ws/game' });
+  } = useGame({ url: WS_URL });
 
   const [timeRemainingMs, setTimeRemainingMs] = useState(GAME_DURATION_MS);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
@@ -50,7 +52,6 @@ export const Game = () => {
   const visibleZombies: ActiveZombie[] = currentZombies.map(z => ({
     id: z.id,
     direction: (z.direction === 1 ? 1 : 0) as 0 | 1,
-    expiresAt: Date.now() + 3000,
   }));
 
   const handleZoneTap = (direction: 0 | 1) => {
