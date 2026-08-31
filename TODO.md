@@ -109,10 +109,8 @@ plus known deployment blockers.
 
 ## Cleanup
 
-- [ ] 12+ stale hashed bundles in `src/main/resources/static/assets/` -
-      `npm run bundle` now replaces the directory wholesale, but it still
-      needs one successful run (blocked on `npm install`; `recharts` is
-      missing from `node_modules`)
+- [x] Stale hashed bundles - `npm run bundle` replaces the directory
+      wholesale; `src/main/resources/static/assets/` holds one JS + one CSS
 - [ ] `package.json` still ships legacy `server.js` scripts (`dev:server`,
       `dev:all`, `server`, `start`)
 
