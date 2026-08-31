@@ -14,7 +14,7 @@ public class Token {
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "value", nullable = false)
+    @Column(name = "\"value\"", nullable = false)
     private String value;
 
     @Column(name = "updated_at", nullable = false)

@@ -1,5 +1,6 @@
 package com.halloween.candy_counter.service;
 
+import com.halloween.candy_counter.repository.EventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.*;
 class GameServiceTest {
 
     @Mock SseBroadcaster broadcaster;
+    @Mock EventRepository eventRepository;
     @Mock WebSocketSession session;
     GameService service;
 
@@ -21,7 +23,7 @@ class GameServiceTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         when(session.getId()).thenReturn("sess-1");
-        service = new GameService(broadcaster);
+        service = new GameService(broadcaster, eventRepository);
     }
 
     @Test

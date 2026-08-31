@@ -18,4 +18,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("SELECT e FROM Event e WHERE e.year = :year AND e.type = 'increment' ORDER BY e.timestamp")
     List<Event> findIncrementsByYear(Integer year);
+
+    @Query("SELECT e FROM Event e WHERE e.year = :year AND e.type = 'game_score' ORDER BY e.timestamp DESC")
+    List<Event> findGameScoresByYear(Integer year);
 }

@@ -1,6 +1,8 @@
 package com.halloween.candy_counter.service;
 
 import com.halloween.candy_counter.domain.GameStatusEvent;
+import com.halloween.candy_counter.model.Event;
+import com.halloween.candy_counter.repository.EventRepository;
 import jakarta.annotation.PreDestroy;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class GameService {
     private final ConcurrentHashMap<String, GameSession> activeSessions = new ConcurrentHashMap<>();
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
     private final SseBroadcaster sseBroadcaster;
+    private final EventRepository eventRepository;
 
     static final long ZOMBIE_TTL_MS = 3000;
     static final long SPAWN_INTERVAL_MS = 600;
@@ -58,8 +61,9 @@ public class GameService {
         return activeSessions;
     }
 
-    public GameService(SseBroadcaster sseBroadcaster) {
+    public GameService(SseBroadcaster sseBroadcaster, EventRepository eventRepository) {
         this.sseBroadcaster = sseBroadcaster;
+        this.eventRepository = eventRepository;
     }
 
     public static class ZombieSpawn {
@@ -222,6 +226,17 @@ public class GameService {
 
         Integer finalScore = sessionState.getScore();
         broadcastGameStatus(false, sessionState.getSessionId());
+
+        // Persist the game result so the stats page can list scores
+        try {
+            int year = java.time.Year.now().getValue();
+            Event gameEvent = new Event("game_score", year, null,
+                sessionState.getSessionId(), finalScore);
+            eventRepository.save(gameEvent);
+        } catch (Exception ignored) {
+            // Non-critical: stats won't show this row but the game still ends
+            // cleanly for the player. The WS game_ended message goes out below.
+        }
 
         try {
             session.sendMessage(new TextMessage(

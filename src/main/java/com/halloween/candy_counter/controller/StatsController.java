@@ -45,6 +45,17 @@ public class StatsController {
         }
         stats.put("votes", votes);
 
+        List<Map<String, Object>> gameScores = eventRepository.findGameScoresByYear(year)
+            .stream()
+            .map(e -> {
+                Map<String, Object> score = new HashMap<>();
+                score.put("score", e.getScore());
+                score.put("timestamp", e.getTimestamp().toString());
+                return score;
+            })
+            .toList();
+        stats.put("gameScores", gameScores);
+
         stats.put("histogram", buildHistogram(year));
 
         return ResponseEntity.ok(stats);

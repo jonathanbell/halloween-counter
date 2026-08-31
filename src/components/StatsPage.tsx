@@ -18,6 +18,7 @@ interface StatsData {
   total: number;
   votes: Record<string, number>;
   histogram: HistogramPoint[];
+  gameScores: Array<{ score: number; timestamp: string }>;
 }
 
 const YEAR_NOW = 2026;
@@ -209,6 +210,36 @@ export const StatsPage = () => {
               <div style={{ color: '#888' }}>No votes yet</div>
             )}
           </div>
+
+          {active.gameScores && active.gameScores.length > 0 && (
+            <div style={{
+              background: 'rgba(255,255,255,0.1)',
+              borderRadius: '12px',
+              padding: '20px',
+              marginTop: '24px',
+            }}>
+              <h3 style={{ marginBottom: '12px' }}>🎮 Game scores</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
+                {active.gameScores.map((gs, i) => (
+                  <div key={i} style={{
+                    background: 'rgba(230,126,34,0.2)',
+                    border: '1px solid rgba(230,126,34,0.3)',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    textAlign: 'center',
+                    minWidth: '80px',
+                  }}>
+                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#e67e22' }}>
+                      {gs.score}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#888' }}>
+                      {new Date(gs.timestamp).toLocaleTimeString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
