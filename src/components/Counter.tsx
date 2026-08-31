@@ -15,7 +15,7 @@ export const Counter: React.FC<CounterProps> = React.memo(({ count, isAnimating,
 
   return (
     <div className="counter-container">
-      <div className={`counter-label ${isOutOfCandy ? 'out-of-candy' : ''}`}>Now serving customer number:</div>
+      <div className={`counter-label ${isOutOfCandy ? 'out-of-candy' : ''}`}>Now serving trick-or-treater number:</div>
       <div className={`counter-display ${isAnimating ? 'animating' : ''}`}>
         {digits.map((digit, index) => (
           <div key={index} className="digit-container">
