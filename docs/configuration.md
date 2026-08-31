@@ -12,6 +12,12 @@ Environment variables and config files for the Spring Boot backend.
 | `ADMIN_TOKEN` | ✅ yes | Token accepted at `/api/counter` (scale event increment authors) |
 | `SETTINGS_TOKEN` | ✅ yes | Token accepted at `/api/settings` (year config mutations) |
 
+In the production compose stack these are set in `deploy/.env` (template:
+`deploy/.env.example`, gitignored) and wired to the containers by
+`deploy/docker-compose.yml` - `DATABASE_URL`/`DATABASE_USER` are fixed there
+to the compose-internal `postgres` service, so only the password and the two
+tokens need values. See `docs/deployment.md`.
+
 Throw tokens from `@Value("${admin.token:...}")` / `@Value("${admin.settings-token:...}")` injection into `AdminTokenFilter` on each request.
 
 ## Profiles (src/main/resources)
@@ -28,6 +34,10 @@ Throw tokens from `@Value("${admin.token:...}")` / `@Value("${admin.settings-tok
 ## Advices for setting Postgres schemas
 
 Postgres won't exist and Create Table ... is run upon app start with Flyway V1/V2/V3 migrations. Create the database alone (`CREATE DATABASE candy;`) if needed and supply its URL. Flyway auto-migrations run through startup.
+
+In the production compose stack none of this is manual: the `postgres`
+container creates the `candy` database from its `POSTGRES_DB` env on first
+boot, and Flyway migrates it when the app starts.
 
 Sample local Postgres under Docker:
 
@@ -94,13 +104,13 @@ or `"settings"` are valid names.
 QR codes embed the token in the URL, so they must be re-printed:
 
 ```bash
-npm run qr https://your-tailscale-funnel-url.ts.net \
+npm run qr https://halloween-counter.jonathanbell.ca \
   <new-admin-token> <settings-token>
 ```
 
 This writes `public/qr/admin-qr.png` and `public/qr/settings-qr.png`.
-Copy them into `src/main/resources/static/qr/` and redeploy (or re-copy if
-running from the jar's exploded static dir).
+Then `npm run bundle` (which copies them into the static bundle), rebuild
+the image, and re-ship it (`docs/deployment.md`).
 
 ### Emergency recovery
 

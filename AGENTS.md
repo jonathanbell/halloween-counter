@@ -28,18 +28,28 @@ Do not attempt to integrate it. Use Spring Boot (Maven) only.
 ## 2. System Architecture
 
 ```
-[GARAGE PROJECTOR LAPTOP - HDMI browser]
-                ↓  (Tailscale VPN / Tailscale Funnel URL)
-      [SPRING BOOT APP SERVER (port 8080)]
+[GARAGE PROJECTOR LAPTOP - HDMI browser]     [PHONES: viewer/admin/game]
+                └──────────────┬─────────────────────┘
+                     HTTPS/WSS to the public domain
+              (halloween-counter.jonathanbell.ca, QR codes)
+                               ↓
+      [UBUNTU CLOUD BOX - docker compose, see deploy/]
+        [CADDY :443]  TLS (Let's Encrypt), reverse proxy
+                ↓
+        [SPRING BOOT APP :8080, compose-internal]
             ├── SSE  (/api/events)          → counter/state
             ├── REST (/api/counter etc.)    → admin mutations
             ├── REST to public effects/vote/stats
             └── WebSocket (/ws/game)        → Whack-a-Zombie game
                 ↓
-      [MANAGED POSTGRES (cloud)]
+        [POSTGRES :5432, compose-internal, pgdata volume]
             ├── events   (increment/vote/effects, timestamped)
             └── settings (year, initialCandy, countAdjustment)
 ```
+
+Topology decided in ADR-013 (`docs/design-decisions.md`): everything on one
+cloud server, no Tailscale. The garage laptop is a plain browser client.
+Deployment runbook: `docs/deployment.md`.
 
 Two browsers machines:
 - **Projector** = shows `/` with `?projection` flag to hide viewer controls
@@ -122,7 +132,7 @@ Both admin & settings tokens exist; AdminTokenFilter routes them.
 ### Public
 
 ```
-GET  /api/state?year=2026                              → snapshot count
+GET  /api/state?year=2026                              → snapshot count + gameActive
 GET  /api/events                                       → SSE subscription
 POST /api/effects/lightning?year=2026                  → lightning visual
 POST /api/effects/candy-rain?year=2026                 → candy rain
@@ -250,17 +260,18 @@ Fields admin tokens for local dev: `dev-admin-token` / `dev-settings-token`
 ```
 Dockerfile 2-stage:
   1. maven:3.9.9-eclipse-temurin-21 → cached dependency download
-  2. eclipse-temurin:21-jre-slim      → runtime only
-
-ENTRYPOINT ["java", "-Xms128m", ... "-Dspring.profiles.active=production", "app.jar"]
+  2. eclipse-temurin:21-jre           → runtime only
 ```
 
-External integrations via environment: DATABASE_URL, DATABASE_USER,
-DATABASE_PASSWORD, ADMIN_TOKEN, SETTINGS_TOKEN. Postgres lives outside the
-container on a managed host (Neon/RDS/etc.) — never internalize it.
+Production runs as a compose stack on one Ubuntu cloud box (`deploy/`):
+caddy (TLS) → app → postgres, with Postgres and the app on the internal
+compose network only. Secrets (DATABASE_PASSWORD, ADMIN_TOKEN,
+SETTINGS_TOKEN) come from `deploy/.env` (gitignored; template in
+`deploy/.env.example`). The image is built locally and shipped to the box;
+on Apple Silicon always `docker build --platform linux/amd64`.
 
-Build: `docker build -t candy-counter:latest .`
-Run:  `docker run -p 8080:8080 -e DATABASE_URL=... -e ADMIN_TOKEN=... candy-counter`
+Full runbook (setup, shipping, backups, rehearsal checklist):
+`docs/deployment.md`.
 
 ---
 
@@ -336,7 +347,6 @@ Run:  `docker run -p 8080:8080 -e DATABASE_URL=... -e ADMIN_TOKEN=... candy-coun
 - [ ] Edit here or there, verify in the PRD or in the tests
 - [ ] mvn test to reverify before you commit
 
-The frontend static bundle must be re-bundled (`npm run build` →
-`cp -r dist/* src/main/resources/static/`) whenever it gets committed.
-CLAUDE.md also supports Vite. Old files must be overridden in the same
-rebuild step.
+The frontend static bundle must be re-bundled (`npm run bundle`) whenever
+it gets committed. The script deletes `src/main/resources/static` before
+copying `dist` in, so stale hashed assets never accumulate.

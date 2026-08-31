@@ -29,6 +29,13 @@
 
 ## 2. System Architecture
 
+> **Superseded (2026-08-30):** the Tailscale topology below (and the
+> Tailscale/managed-Postgres items in sections 1 and 8) was replaced by a
+> single cloud server running Caddy + app + Postgres behind
+> `halloween-counter.jonathanbell.ca`. See ADR-013 in
+> `docs/design-decisions.md` and the runbook in `docs/deployment.md`.
+> The rest of this PRD (features, game, data model) still stands.
+
 **Topology:**
 
 ```

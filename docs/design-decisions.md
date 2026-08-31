@@ -74,6 +74,33 @@ Projectors use the same frontend and the same frontend endphone attempts to stuf
 
 **Decision:** hiding controls on `?projection` URL param.
 
+## ADR-013: Colocate app + Postgres on one cloud box, drop Tailscale (2026-08-30)
+
+The PRD topology ran the app on a personal server reached over Tailscale
+WireGuard (garage) and Tailscale Funnel (phones), against a managed remote
+Postgres. Replaced with a single Ubuntu cloud server (Oregon) running a
+compose stack: Caddy (TLS via Let's Encrypt), the app, and Postgres on an
+internal network with a volume. Public DNS: `halloween-counter.jonathanbell.ca`.
+The garage laptop becomes a plain browser client.
+
+Rationale:
+
+- The frontend was already location-agnostic (relative API URLs, WS URL
+  derived from `location.host`), so the move costs zero app code.
+- Latency is a non-issue: BC to Oregon is 15-35 ms RTT against a game
+  hit/miss window of 1500-3000 ms and server ticks of 500-600 ms. Funnel's
+  relay hop is removed, so phones likely get faster, not slower.
+- Removes three moving parts (WireGuard tunnel, Funnel, managed DB vendor)
+  and adds one stable, printable domain with real TLS.
+- Tradeoffs accepted: the night depends on garage internet (mitigated by
+  cell tethering; SSE reconnect and `/api/state` re-seeding already handle
+  drops), and DB durability moves from a managed vendor to `pg_dump`
+  backups of the `pgdata` volume (fine for a candy counter; pointing
+  `DATABASE_URL` back at a managed host remains a one-line revert).
+
+**Decision:** one cloud box, compose stack (caddy + app + postgres), no
+Tailscale. Full runbook in `docs/deployment.md`.
+
 ---
 
 More context in `agents.md` root file. All of the exact texts above are specific design decisions made by session, not preferences.
