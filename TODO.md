@@ -29,6 +29,15 @@ plus known deployment blockers.
       databases with orphan sequences (now `false`; fails loudly instead)
 - [ ] Tell the box's admin that `template1` is dirty (six orphan
       `*_id_seq` sequences) - every future `CREATE DATABASE` inherits them
+- [ ] Clear the 5 leftover 2026 effect events before Halloween (they do not
+      affect the counter or stats, which only read increment/vote rows, but
+      the night should start from an empty table)
+- [x] Server audit 2026-08-31: container healthy on `unless-stopped` with a
+      768 MiB cap and no published ports; secrets 0600 with real 48-char
+      values (not the weak defaults); `candy` role non-superuser, connlimit
+      20, CONNECT revoked from PUBLIC; Flyway V1-V5 all `success=true`; TLS
+      valid to Nov 29; Docker enabled at boot; 1.1 GiB RAM and 30 GB disk
+      free. Found and fixed: `/game` and `/stats` 404'd in production
 - [ ] Regenerate + print QR codes with real tokens, then `make deploy`
 - [ ] Switch to git-sha tags after the test period (`make deploy` with no
       TAG override does this automatically)
