@@ -19,6 +19,9 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Boot 3.3 pins Byte Buddy 1.14, which cannot instrument classes
+             compiled for JDK 25 - Mockito inline mocks fail without this -->
+        <byte-buddy.version>1.17.8</byte-buddy.version>
     </properties>
 
     <dependencies>
@@ -58,10 +61,17 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Flyway migrations -->
+        <!-- Flyway migrations. Flyway 10 moved Postgres support out of
+             flyway-core into its own artifact; without it the app fails on
+             boot with "Unsupported Database: PostgreSQL". H2 support is
+             still in core, so local dev never notices -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
         <!-- Validation -->

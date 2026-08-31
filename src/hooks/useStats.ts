@@ -1,61 +1,86 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { StatsData } from '../types';
 
+const YEAR = 2026;
+
+// Any count jump larger than this is a resync (initial state fetch, admin
+// adjustment), not real visitors walking up - don't fabricate timestamps
+const MAX_LIVE_DELTA = 5;
+
+interface HistogramPoint {
+  minute: string;
+  count: number;
+}
+
+// Real handout timestamps: seeded from the server's /api/stats histogram
+// (minute resolution), then appended live as increments arrive. Survives
+// page refreshes instead of simulating a fake even distribution.
 export const useStats = (currentCount: number, candyRemaining: number, initialCandyCount: number) => {
-  const startTimeRef = useRef(Date.now());
-  
-  // Initialize timestamps based on initial count (simulating even distribution)
-  const [timestamps, setTimestamps] = useState<number[]>(() => {
-    if (currentCount === 0) return [];
-    
-    // Create simulated timestamps for existing count
-    const now = Date.now();
-    const timePerVisitor = 5 * 60 * 1000; // Assume 5 minutes between visitors
-    const simulated: number[] = [];
-    
-    for (let i = 0; i < currentCount; i++) {
-      simulated.push(now - (currentCount - i) * timePerVisitor);
-    }
-    
-    return simulated;
-  });
+  const [timestamps, setTimestamps] = useState<number[]>([]);
+  const [seeded, setSeeded] = useState(false);
+  const prevCountRef = useRef<number | null>(null);
 
-  // Track when a new visitor arrives
   useEffect(() => {
-    if (currentCount > timestamps.length) {
-      setTimestamps(prev => [...prev, Date.now()]);
-    }
-  }, [currentCount, timestamps.length]);
+    fetch(`/api/stats?year=${YEAR}`)
+      .then(r => r.json())
+      .then(stats => {
+        const seededTimestamps: number[] = [];
+        for (const bucket of (stats.histogram ?? []) as HistogramPoint[]) {
+          const time = new Date(bucket.minute).getTime();
+          if (Number.isNaN(time)) continue;
+          for (let i = 0; i < bucket.count; i++) {
+            seededTimestamps.push(time);
+          }
+        }
+        seededTimestamps.sort((a, b) => a - b);
+        setTimestamps(prev => [...seededTimestamps, ...prev]);
+        setSeeded(true);
+      })
+      .catch(err => {
+        console.error('[Stats] histogram fetch failed:', err);
+        setSeeded(true);
+      });
+  }, []);
 
-  // Calculate all stats in a memoized way
+  // Append a timestamp per live increment
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    prevCountRef.current = currentCount;
+    if (prev === null || currentCount <= prev) return;
+
+    const delta = currentCount - prev;
+    if (delta > MAX_LIVE_DELTA) return;
+
+    const now = Date.now();
+    setTimestamps(ts => [...ts, ...Array.from({ length: delta }, () => now)]);
+  }, [currentCount]);
+
+  // Tick so the time-window stats (past-5-min, depletion rate) decay even
+  // when no new increments arrive
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const stats = useMemo<StatsData>(() => {
     const now = Date.now();
-    const elapsedHours = (now - startTimeRef.current) / (1000 * 60 * 60);
-    const fiveMinutesAgo = now - (5 * 60 * 1000);
+    const fiveMinutesAgo = now - 5 * 60 * 1000;
 
-    let candiesGivenPastFiveMinutes: number | null = null;
+    const candiesGivenPastFiveMinutes = seeded
+      ? timestamps.filter(time => time >= fiveMinutesAgo).length
+      : null;
+
     let averageTimeBetween = 0;
-    let candyDepletionRate = 0;
-
-    // Calculate candies given in the past five minutes
-    const elapsedMinutes = (now - startTimeRef.current) / (1000 * 60);
-    if (elapsedMinutes >= 5) {
-      const visitorsInPastFiveMinutes = timestamps.filter(time => time >= fiveMinutesAgo).length;
-      // Assuming 1 candy per visitor for simplicity
-      // Could be multiplied by candyPerChild if we track that
-      candiesGivenPastFiveMinutes = visitorsInPastFiveMinutes;
+    if (timestamps.length > 1) {
+      const totalTime = timestamps[timestamps.length - 1] - timestamps[0];
+      averageTimeBetween = Math.round(totalTime / (timestamps.length - 1) / 1000);
     }
-    
-    if (elapsedHours > 0) {
-      if (timestamps.length > 1) {
-        const totalTime = timestamps.reduce((acc, time, i) => {
-          if (i === 0) return acc;
-          return acc + (time - timestamps[i - 1]);
-        }, 0);
-        // Calculate average time in seconds
-        averageTimeBetween = Math.round(totalTime / (timestamps.length - 1) / 1000);
-      }
 
+    let candyDepletionRate = 0;
+    const startTime = timestamps.length > 0 ? timestamps[0] : now;
+    const elapsedHours = (now - startTime) / (1000 * 60 * 60);
+    if (elapsedHours > 0) {
       const candyUsed = initialCandyCount - candyRemaining;
       candyDepletionRate = Math.floor(candyUsed / elapsedHours);
     }
@@ -64,19 +89,12 @@ export const useStats = (currentCount: number, candyRemaining: number, initialCa
       candiesGivenPastFiveMinutes,
       averageTimeBetween,
       candyDepletionRate,
-      startTime: startTimeRef.current,
+      startTime,
       timestamps,
     };
-  }, [candyRemaining, initialCandyCount, timestamps]);
-
-  // Update stats periodically without causing re-renders
-  const [, forceUpdate] = useState({});
-  useEffect(() => {
-    const interval = setInterval(() => {
-      forceUpdate({});
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    // tick is a deliberate dep: it forces the time-window math to re-run
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seeded, candyRemaining, initialCandyCount, timestamps, tick]);
 
   return stats;
 };

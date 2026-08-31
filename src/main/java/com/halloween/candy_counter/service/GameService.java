@@ -1,6 +1,7 @@
 package com.halloween.candy_counter.service;
 
 import com.halloween.candy_counter.domain.GameStatusEvent;
+import jakarta.annotation.PreDestroy;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
@@ -159,17 +160,29 @@ public class GameService {
 
         Difficulty difficulty = sessionState.getDifficulty();
         Long zombieKey = parseZombieId(zombieId);
-        ZombieSpawn spawn = zombieKey != null ? sessionState.getZombieSpawns().get(zombieKey) : null;
 
-        // Missing, malformed, unknown, or expired id all count as a miss
-        if (spawn == null || spawn.isExpired(System.currentTimeMillis(), difficulty.zombieTtlMs)) {
+        // Atomically claim the zombie so the resolver task cannot also charge
+        // it: whoever removes the entry owns its single scoring outcome
+        ZombieSpawn spawn = zombieKey != null
+            ? sessionState.getZombieSpawns().remove(zombieKey) : null;
+
+        // Missing, malformed, unknown, or already-resolved id counts as a miss
+        if (spawn == null) {
             sessionState.addScore(MISS_SCORE);
             sendScoreUpdate(sessionState, "miss");
             return;
         }
 
+        // Expired but not yet swept: one miss, and tell the projection the
+        // zombie is gone so its sprite doesn't linger
+        if (spawn.isExpired(System.currentTimeMillis(), difficulty.zombieTtlMs)) {
+            sessionState.addScore(MISS_SCORE);
+            sseBroadcaster.broadcastZombieMissed(String.valueOf(spawn.zombieId));
+            sendScoreUpdate(sessionState, "miss");
+            return;
+        }
+
         sessionState.addScore(difficulty.hitScore);
-        sessionState.getZombieSpawns().remove(zombieKey);
 
         // Flash lightning on the projection as hit feedback
         sseBroadcaster.broadcastEffectLightningFlash();
@@ -193,6 +206,12 @@ public class GameService {
                     result, sessionState.getScore())
             ));
         } catch (Exception ignored) {}
+    }
+
+    // Exposed on /api/state so a projection refreshed mid-game can render
+    // the overlay instead of waiting for the next game_status SSE message
+    public boolean isGameActive() {
+        return !activeSessions.isEmpty();
     }
 
     public void endGame(WebSocketSession session) {
@@ -240,9 +259,13 @@ public class GameService {
         long now = System.currentTimeMillis();
         long ttlMs = gameSession.getDifficulty().zombieTtlMs;
 
-        spawns.entrySet().removeIf(entry -> {
-            ZombieSpawn spawn = entry.getValue();
-            if (!spawn.isExpired(now, ttlMs)) return false;
+        for (ZombieSpawn candidate : spawns.values()) {
+            if (!candidate.isExpired(now, ttlMs)) continue;
+
+            // Claim before scoring: a concurrent tap on the same zombie also
+            // removes by key, and only the winner may charge the miss
+            ZombieSpawn spawn = spawns.remove(candidate.zombieId);
+            if (spawn == null) continue;
 
             gameSession.addScore(MISS_SCORE);
             sseBroadcaster.broadcastZombieMissed(String.valueOf(spawn.zombieId));
@@ -252,8 +275,7 @@ public class GameService {
                 ));
                 sendScoreUpdate(gameSession, "miss");
             } catch (Exception ignored) {}
-            return true;
-        });
+        }
     }
 
     private void cancelTasks(GameSession sessionState) {
@@ -272,5 +294,14 @@ public class GameService {
     private void broadcastGameStatus(boolean active, UUID sessionId) {
         GameStatusEvent event = new GameStatusEvent(active, sessionId);
         sseBroadcaster.broadcastGameStatus(event);
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        for (GameSession sessionState : activeSessions.values()) {
+            cancelTasks(sessionState);
+        }
+        activeSessions.clear();
+        executor.shutdownNow();
     }
 }

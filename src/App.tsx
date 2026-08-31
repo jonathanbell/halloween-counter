@@ -46,12 +46,13 @@ function CounterPage() {
     counter.initialCandyCount
   );
 
-  // Game mode listening — render game overlay when a game session is active
-  const { lastMessage } = useSSE('/api/events');
+  // Game overlay state lives in useCounter (seeded from /api/state, then
+  // latched from game_status SSE messages)
+  const isGameActive = counter.isGameActive;
 
-  // Latched from game_status: deriving it from lastMessage directly would
-  // flip false as soon as any other SSE message arrives mid-game
-  const [isGameActive, setIsGameActive] = useState(false);
+  // The EventSource is shared with useCounter - this hook instance just
+  // subscribes to it for effect events
+  const { lastMessage } = useSSE('/api/events');
 
   // Effect triggers: bump counters when SSE effect events arrive
   const [lightningTrigger, setLightningTrigger] = useState(0);
@@ -59,9 +60,6 @@ function CounterPage() {
 
   useEffect(() => {
     if (!lastMessage) return;
-    if (lastMessage.type === 'game_status') {
-      setIsGameActive(lastMessage.active);
-    }
     if (lastMessage.type === 'effect_lightning') {
       setLightningTrigger((t: number) => t + 1);
     }
@@ -82,6 +80,10 @@ function CounterPage() {
   }, [counter.isConnected, counter.connectionError]);
 
   useEffect(() => {
+    // Projector-only shortcuts: a viewer's spacebar must not fire
+    // increments, and Ctrl+R / Ctrl+F should keep their browser meanings
+    if (!isProjection) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'r' && e.ctrlKey) {
         e.preventDefault();
@@ -111,7 +113,7 @@ function CounterPage() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keypress', handleKeyPress);
     };
-  }, [counter]);
+  }, [counter, isProjection]);
 
   return (
     <div className="app">

@@ -18,13 +18,16 @@ public class CounterService {
     private final EventRepository eventRepository;
     private final SettingsRepository settingsRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final GameService gameService;
 
     public CounterService(EventRepository eventRepository,
                           SettingsRepository settingsRepository,
-                          ApplicationEventPublisher eventPublisher) {
+                          ApplicationEventPublisher eventPublisher,
+                          GameService gameService) {
         this.eventRepository = eventRepository;
         this.settingsRepository = settingsRepository;
         this.eventPublisher = eventPublisher;
+        this.gameService = gameService;
     }
 
     @Transactional
@@ -75,6 +78,8 @@ public class CounterService {
         state.put("currentCount", total);
         state.put("initialCandyCount", initialCandy);
         state.put("candyRemaining", Math.max(0, initialCandy - total));
+        // Lets a projection refreshed mid-game restore the game overlay
+        state.put("gameActive", gameService.isGameActive());
         return state;
     }
 

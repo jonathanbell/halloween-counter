@@ -23,19 +23,22 @@ GET /api/state?year=2026
   "year": 2026,
   "currentCount": 42,
   "initialCandyCount": 300,
-  "candyRemaining": 258
+  "candyRemaining": 258,
+  "gameActive": false
 }
 ```
 
 `currentCount = COUNT(increment events) + settings.count_adjustment`.
+`gameActive` reflects the in-memory game session, so a projection refreshed
+mid-game can restore the overlay.
 
 ### `GET /api/events`
 
 EventSource subscription (SSE, no timeout). One JSON payload per message:
 
 ```json
-{"type":"increment","year":2026,"total":42,"timestamp":"..."}
-{"type":"vote","year":2026,"total":42,"timestamp":"..."}
+{"type":"increment","year":2026,"total":42,"initialCandyCount":300,"timestamp":"..."}
+{"type":"vote","year":2026,"total":42,"initialCandyCount":300,"timestamp":"..."}
 
 {"type":"effect_lightning","year":2026,"timestamp":"..."}
 {"type":"effect_candy_rain","year":2026,"timestamp":"..."}
@@ -47,6 +50,11 @@ EventSource subscription (SSE, no timeout). One JSON payload per message:
 
 Notes:
 - `total` is always the increment total, even on `vote` messages.
+- `initialCandyCount` rides along on count messages so supply changes made
+  in settings reach every screen without a refresh.
+- The server sends an SSE comment (`: keep-alive`) every 15s. EventSource
+  ignores comments; they only keep proxies (Caddy, or anything else in the
+  path) from dropping idle connections.
 - A zombie hit also emits `effect_lightning` (no `year` field) so the
   projection flashes.
 - Game messages mirror the WebSocket so the projection renders visuals
@@ -154,7 +162,9 @@ Text frames, one JSON object each. One game session globally; a second
 ```
 
 Unknown or missing `difficulty` falls back to `easy`. A `zombie_hit` with a
-missing, malformed, unknown, or expired `zombieId` counts as a miss (-1).
+missing, malformed, unknown, or expired `zombieId` counts as exactly one
+miss (-1); tapping an expired zombie also claims it, so the resolver cannot
+charge the same zombie a second time, and its removal is broadcast over SSE.
 
 ### Server to client
 

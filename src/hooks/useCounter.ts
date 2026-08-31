@@ -11,6 +11,7 @@ interface UseCounterReturn {
   initialCandyCount: number;
   isAnimating: boolean;
   isConnected: boolean;
+  isGameActive: boolean;
   connectionError: string | null;
   increment: () => Promise<void>;
   reset: () => void;
@@ -25,6 +26,10 @@ export const useCounter = (): UseCounterReturn => {
     initialCandyCount: 300,
     candyPerChild: 1,
   });
+
+  // Latched from game_status messages; seeded from /api/state so a
+  // projection refreshed mid-game restores the overlay
+  const [isGameActive, setIsGameActive] = useState(false);
 
   const [isAnimating, setIsAnimating] = useState(false);
   const prevCountRef = useRef<number | null>(null);
@@ -54,6 +59,7 @@ export const useCounter = (): UseCounterReturn => {
           candyRemaining: state.candyRemaining,
           initialCandyCount: state.initialCandyCount,
         }));
+        setIsGameActive(Boolean(state.gameActive));
         prevCountRef.current = state.currentCount;
       })
       .catch(err => console.error('[Counter] state fetch failed:', err));
@@ -63,13 +69,24 @@ export const useCounter = (): UseCounterReturn => {
   useEffect(() => {
     if (!lastMessage) return;
 
+    if (lastMessage.type === 'game_status') {
+      setIsGameActive(lastMessage.active);
+      return;
+    }
+
     if (lastMessage.type === 'increment') {
       const newCount = lastMessage.total;
-      setLocalState(prev => ({
-        ...prev,
-        currentCount: newCount,
-        candyRemaining: Math.max(0, prev.initialCandyCount - newCount),
-      }));
+      setLocalState(prev => {
+        // The server includes the current supply so settings changes
+        // propagate without a refresh
+        const initial = lastMessage.initialCandyCount ?? prev.initialCandyCount;
+        return {
+          ...prev,
+          currentCount: newCount,
+          initialCandyCount: initial,
+          candyRemaining: Math.max(0, initial - newCount),
+        };
+      });
 
       if (prevCountRef.current !== null && newCount > prevCountRef.current) {
         const delta = newCount - prevCountRef.current;
@@ -105,7 +122,7 @@ export const useCounter = (): UseCounterReturn => {
     setLocalState(prev => ({
       ...prev,
       currentCount: prev.currentCount + 1,
-      candyRemaining: Math.max(0, prev.candyRemaining - prev.candyPerChild),
+      candyRemaining: Math.max(0, prev.initialCandyCount - (prev.currentCount + 1)),
     }));
     pendingLocalUpdatesRef.current += 1;
     triggerAnimation();
@@ -126,19 +143,21 @@ export const useCounter = (): UseCounterReturn => {
       }
     } catch (err) {
       console.error('[Counter] Failed to increment:', err);
-      // Revert optimistic update on failure
-      if (lastMessage && lastMessage.type === 'increment') {
-        setLocalState(prev => ({
+      // Undo the optimistic +1 symmetrically - works even when no SSE
+      // message has arrived yet
+      setLocalState(prev => {
+        const revertedCount = Math.max(0, prev.currentCount - 1);
+        return {
           ...prev,
-          currentCount: lastMessage.total,
-          candyRemaining: Math.max(0, prev.initialCandyCount - lastMessage.total),
-        }));
-      }
+          currentCount: revertedCount,
+          candyRemaining: Math.max(0, prev.initialCandyCount - revertedCount),
+        };
+      });
       if (pendingLocalUpdatesRef.current > 0) {
-        pendingLocalUpdatesRef.current = Math.max(0, pendingLocalUpdatesRef.current - 1);
+        pendingLocalUpdatesRef.current -= 1;
       }
     }
-  }, [lastMessage, triggerAnimation]);
+  }, [triggerAnimation]);
 
   useEffect(() => {
     return () => {
@@ -160,6 +179,7 @@ export const useCounter = (): UseCounterReturn => {
     reset,
     isAnimating,
     isConnected,
+    isGameActive,
     connectionError: error,
   };
 };

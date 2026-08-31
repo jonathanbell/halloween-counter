@@ -21,13 +21,14 @@ class CounterServiceTest {
     @Mock EventRepository eventRepository;
     @Mock SettingsRepository settingsRepository;
     @Mock ApplicationEventPublisher eventPublisher;
+    @Mock GameService gameService;
 
     CounterService service;
 
     @BeforeEach
     void setUp() {
         openMocks(this);
-        service = new CounterService(eventRepository, settingsRepository, eventPublisher);
+        service = new CounterService(eventRepository, settingsRepository, eventPublisher, gameService);
     }
 
     @Test
@@ -66,6 +67,18 @@ class CounterServiceTest {
         assertEquals(105L, state.get("currentCount"));
         assertEquals(195L, state.get("candyRemaining"));
         assertEquals(300, state.get("initialCandyCount"));
+        assertEquals(false, state.get("gameActive"));
+    }
+
+    @Test
+    void getStateReportsActiveGame() {
+        when(eventRepository.countIncrementsByYear(2026)).thenReturn(0L);
+        when(settingsRepository.findByYear(2026)).thenReturn(Optional.empty());
+        when(gameService.isGameActive()).thenReturn(true);
+
+        Map<String, Object> state = service.getState(2026);
+
+        assertEquals(true, state.get("gameActive"));
     }
 
     @Test

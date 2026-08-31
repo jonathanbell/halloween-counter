@@ -301,6 +301,10 @@
           const data = JSON.parse(event.data);
           if (data.type === 'increment') {
             currentCount = data.total;
+            // Settings changes ride along on count messages
+            if (typeof data.initialCandyCount === 'number') {
+              initialCandyCount = data.initialCandyCount;
+            }
             updateDisplay();
           }
         } catch (e) {

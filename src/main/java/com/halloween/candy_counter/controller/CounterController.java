@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 
 @RestController
@@ -42,5 +43,6 @@ public class CounterController {
         return sseBroadcaster.subscribe();
     }
 
-    public record IncrementRequest(Integer year) {}
+    // @NotNull turns a missing year into a 400 instead of a DB-level 500
+    public record IncrementRequest(@NotNull Integer year) {}
 }

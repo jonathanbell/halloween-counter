@@ -10,21 +10,36 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.halloween.candy_counter.domain.GameStatusEvent;
+import com.halloween.candy_counter.model.Settings;
 import jakarta.annotation.PreDestroy;
-import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class SseBroadcaster {
+
+    // Comment frames keep idle connections alive through proxies (Tailscale
+    // Funnel and friends kill silent streams); EventSource ignores them
+    private static final long HEARTBEAT_INTERVAL_MS = 15_000;
 
     private final List<SseEmitter> subscribers = new CopyOnWriteArrayList<>();
     private final EventRepository eventRepository;
     private final SettingsRepository settingsRepository;
     private final ObjectMapper objectMapper;
+
+    private final ScheduledExecutorService heartbeatExecutor =
+        Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "sse-heartbeat");
+            t.setDaemon(true);
+            return t;
+        });
 
     public SseBroadcaster(EventRepository eventRepository,
                           SettingsRepository settingsRepository,
@@ -32,6 +47,8 @@ public class SseBroadcaster {
         this.eventRepository = eventRepository;
         this.settingsRepository = settingsRepository;
         this.objectMapper = objectMapper;
+        heartbeatExecutor.scheduleWithFixedDelay(this::sendHeartbeats,
+            HEARTBEAT_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, TimeUnit.MILLISECONDS);
     }
 
     public SseEmitter subscribe() {
@@ -50,16 +67,13 @@ public class SseBroadcaster {
         if (subscribers.isEmpty()) return;
 
         Integer year = event.getEvent().getYear();
-        Long eventTotal = eventRepository.countIncrementsByYear(year);
-        int adjustment = settingsRepository.findByYear(year)
-            .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
-            .orElse(0);
-        long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
+        CountState count = countState(year);
 
         EventMessage envelope = new EventMessage(
             event.getEvent().getType(),
             year,
-            (int) total,
+            count.total(),
+            count.initialCandyCount(),
             event.getEvent().getTimestamp()
         );
 
@@ -68,13 +82,27 @@ public class SseBroadcaster {
 
     public void broadcastCountSnapshot(Integer year) {
         if (subscribers.isEmpty()) return;
+        CountState count = countState(year);
+        EventMessage envelope = new EventMessage("increment", year, count.total(),
+            count.initialCandyCount(), Instant.now());
+        sendToSubscribers(envelope);
+    }
+
+    // initialCandyCount rides along on every count message so clients track
+    // supply changes from the settings page without a refresh
+    private record CountState(int total, int initialCandyCount) {}
+
+    private CountState countState(Integer year) {
         Long eventTotal = eventRepository.countIncrementsByYear(year);
-        int adjustment = settingsRepository.findByYear(year)
+        Optional<Settings> settings = settingsRepository.findByYear(year);
+        int adjustment = settings
             .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
             .orElse(0);
+        int initialCandy = settings
+            .map(s -> s.getInitialCandyCount() != null ? s.getInitialCandyCount() : 300)
+            .orElse(300);
         long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
-        EventMessage envelope = new EventMessage("increment", year, (int) total, Instant.now());
-        sendToSubscribers(envelope);
+        return new CountState((int) total, initialCandy);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -137,14 +165,27 @@ public class SseBroadcaster {
         for (SseEmitter emitter : subscribers) {
             try {
                 emitter.send(payload);
-            } catch (IOException ignored) {
-                // subscriber disconnected — reactive cleanup happens in onError
+            } catch (Exception ignored) {
+                // Dead subscriber: drop it now so later broadcasts and
+                // heartbeats don't stall on a broken connection
+                subscribers.remove(emitter);
+            }
+        }
+    }
+
+    private void sendHeartbeats() {
+        for (SseEmitter emitter : subscribers) {
+            try {
+                emitter.send(SseEmitter.event().comment("keep-alive"));
+            } catch (Exception ignored) {
+                subscribers.remove(emitter);
             }
         }
     }
 
     @PreDestroy
     public void cleanup() {
+        heartbeatExecutor.shutdownNow();
         for (SseEmitter e : subscribers) {
             try { e.complete(); } catch (Exception ignored) {}
         }

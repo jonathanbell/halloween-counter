@@ -66,6 +66,23 @@ class GameServiceTest {
         service.processZombieHit(session, String.valueOf(zombieId));
 
         assertEquals(GameService.MISS_SCORE, gameSession.getScore());
+        // The tap must claim the zombie; leaving it in the map would let the
+        // resolver task charge the same zombie a second miss
+        assertTrue(gameSession.getZombieSpawns().isEmpty());
+    }
+
+    @Test
+    void hitExpiredZombieBroadcastsRemovalToProjection() {
+        service.startGame(session);
+        var gameSession = getSession(service, session.getId());
+        long zombieId = 424241L;
+        gameSession.getZombieSpawns().put(zombieId,
+            new GameService.ZombieSpawn(zombieId, 0,
+                System.currentTimeMillis() - (GameService.ZOMBIE_TTL_MS + 1)));
+
+        service.processZombieHit(session, String.valueOf(zombieId));
+
+        verify(broadcaster).broadcastZombieMissed(String.valueOf(zombieId));
     }
 
     @Test
