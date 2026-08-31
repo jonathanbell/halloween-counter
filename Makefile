@@ -27,7 +27,7 @@ IMAGE  = candy-counter:$(TAG)
 # Docker Desktop's credential helper is not on PATH in non-login shells
 export PATH := /Applications/Docker.app/Contents/Resources/bin:$(PATH)
 
-.PHONY: help bundle image smoke smoke-down ship deploy rollback verify logs status
+.PHONY: help bundle image smoke smoke-down ship deploy rollback verify logs status tags
 
 help:
 	@echo "make deploy          build, ship, and release $(IMAGE)"
@@ -36,6 +36,7 @@ help:
 	@echo "make image           npm run bundle + docker build (amd64)"
 	@echo "make ship            docker save | ssh $(SSH_HOST) | docker load"
 	@echo "make rollback TAG=x  point the server at an already-shipped tag"
+	@echo "make tags            list image tags available on the server"
 	@echo "make verify          health + state checks against the server"
 	@echo "make logs            tail app logs on the server"
 	@echo "make status          compose ps + memory usage on the server"
@@ -68,11 +69,16 @@ deploy: ship
 	  && cd $(STACK_DIR) && docker compose up -d $(SERVICE)"
 	@$(MAKE) --no-print-directory verify
 
-# Rollback re-points compose at a tag that is already loaded on the box
-# (docker images candy-counter, over ssh, lists what is available)
+# Rollback re-points compose at a tag already loaded on the box.
+# `make tags` lists what is available to roll back to.
+#
+# The guard tests how TAG was set, not its value: comparing against the
+# current git describe wrongly rejects rolling *forward* to the tag that
+# happens to match HEAD.
 rollback:
-	@test "$(filter-out $(shell git describe --always --dirty),$(TAG))" != "" || { \
-	  echo "Pass the tag to roll back to: make rollback TAG=<old-tag>"; exit 1; }
+	@test "$(origin TAG)" = "command line" || { \
+	  echo "Pass the tag to roll back to: make rollback TAG=<tag>"; \
+	  echo "Available on the server:"; $(MAKE) --no-print-directory tags; exit 1; }
 	ssh $(SSH_HOST) "sed -i 's|image: candy-counter:.*|image: candy-counter:$(TAG)|' $(STACK_DIR)/compose.yaml \
 	  && cd $(STACK_DIR) && docker compose up -d $(SERVICE)"
 	@$(MAKE) --no-print-directory verify
@@ -87,6 +93,13 @@ verify:
 	@echo "container: healthy"
 	@curl -sf 'https://$(DOMAIN)/api/state?year=2026' && echo || \
 	  { echo "public URL failed - DNS/Caddy not ready? (container itself is healthy)"; exit 1; }
+
+# What is on the box, newest first, with the running tag marked
+tags:
+	@ssh $(SSH_HOST) 'running=$$(docker ps --filter name=$(CONTAINER) --format "{{.Image}}" | cut -d: -f2); \
+	  docker images candy-counter --format "{{.Tag}}\t{{.CreatedSince}}" | \
+	  while IFS= read -r line; do t=$$(echo "$$line" | cut -f1); \
+	  if [ "$$t" = "$$running" ]; then echo "  $$line  <- running"; else echo "  $$line"; fi; done'
 
 logs:
 	ssh -t $(SSH_HOST) 'cd $(STACK_DIR) && docker compose logs -f $(SERVICE)'

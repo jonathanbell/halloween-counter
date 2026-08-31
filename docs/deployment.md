@@ -53,6 +53,7 @@ make deploy          # bundle -> build amd64 image -> ship -> release -> verify
 make smoke           # boot the built image + throwaway Postgres on :8080
 make smoke-down      # stop the local smoke stack
 make rollback TAG=x  # re-point the server at an already-shipped tag
+make tags            # list image tags on the server (marks the running one)
 make logs            # tail app logs on the server
 make status          # compose ps + memory on the server
 make verify          # health + public state check
