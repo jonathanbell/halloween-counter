@@ -1,6 +1,6 @@
 # Halloween 2026 Candy Counter 🎃
 
-Spring Boot + Vite/React counter projected onto a garage door. Live count, votes, interactive effects, and a WebSocket game (Whack-a-Zombie). Deploys as a Docker image to a shared cloud server behind `halloween-counter.jonathanbell.ca` (`make deploy`); the garage laptop is just a browser.
+Spring Boot + Vite/React counter and game projected onto a garage door Halloween night. Live count, votes, interactive effects, and a WebSocket game (Whack-a-Zombie). Deploys as a Docker image to a shared cloud server behind `halloween-counter.jonathanbell.ca`; the garage laptop is just a browser logged in and displaying the counter.
 
 ## Prerequisites
 
@@ -58,14 +58,14 @@ never pile up in the jar).
 
 ## Interfaces
 
-| Route | Audience | Purpose |
-|-------|----------|---------|
-| `/` (React) | viewer | counter + zombies + vote/effects controls |
-| `/?projection&token=<admin>` | projector browser | controls hidden; spacebar increments |
-| `/game` (React) | viewer phone | Whack-a-Zombie controller (easy/hard/lightning) |
-| `/stats` (React) | viewer phone | Recharts graphs, current + last year |
-| `/remote.html?token=<admin>` | admin phone | big increment button |
-| `/settings.html?token=<settings>` | admin | initial candy + total override |
+| Route                             | Audience          | Purpose                                                 |
+| --------------------------------- | ----------------- | ------------------------------------------------------- |
+| `/` (React)                       | viewer            | counter + zombies + vote/effects controls               |
+| `/?projection&token=<admin>`      | projector browser | controls hidden; spacebar increments                    |
+| `/game` (React)                   | viewer phone      | Whack-a-Zombie controller (easy/hard/lightning)         |
+| `/stats` (React)                  | viewer phone      | Recharts graphs, current + last year stats/data history |
+| `/remote.html?token=<admin>`      | admin phone       | big increment button                                    |
+| `/settings.html?token=<settings>` | admin             | initial candy + total override                          |
 
 Projector keyboard: `Space` increment, `Ctrl+F` fullscreen toggle, `Ctrl+R` reset (jumps to settings).
 
@@ -105,13 +105,9 @@ terminates TLS, its host PostgreSQL holds the data, and secrets live in its
 Full detail in `docs/deployment.md` (including the October dress-rehearsal
 checklist); the short version:
 
-1. One-time server setup on the box (see `docs/deployment.md` for what
-   exists there): DNS record, `candy` database + role on the host
-   PostgreSQL, `HALLOWEEN_*` secrets in `/opt/stack/.env`, compose service
-   block, Caddy site block.
-2. `make smoke` locally, then `make deploy`. Flyway migrates and seeds on
+1. `make smoke` locally, then `make deploy`. Flyway migrates and seeds on
    first boot; `make verify` confirms health and the public API.
-3. Bake and print QR codes:
+1. Bake and print QR codes:
    ```bash
    npm run qr https://halloween-counter.jonathanbell.ca <admin-token> <settings-token>
    # writes public/qr/admin-qr.png + settings-qr.png
@@ -119,16 +115,17 @@ checklist); the short version:
    Then `make deploy` again so the printed QRs are also served by the app.
    Print a public QR (plain URL) for viewers, keep the admin/settings QRs
    private.
-4. Set the candy supply: open `/settings.html?token=<settings>` and set
+1. Set the candy supply: open `/settings.html?token=<settings>` and set
    Initial Candy Count.
 
 ### Showtime
 
+1. Set laptop screensaver to NEVER engage.
 1. Garage laptop browser: `/?projection&token=<admin-token>`, `Ctrl+F` for
    fullscreen. Spacebar increments as backup.
-2. Admin phone: scan the admin QR -> `/remote.html` big button. Tap once per
+1. Admin phone: scan the admin QR -> `/remote.html` big button. Tap once per
    trick-or-treater.
-3. Viewers: scan the public QR -> vote, fire lightning/candy rain (7s
+1. Viewers: scan the public QR -> vote, fire lightning/candy rain (7s
    cooldown), play `/game` (takes over the projection for 30s), browse `/stats`.
 
 ### When something goes wrong
@@ -148,7 +145,7 @@ checklist); the short version:
   su - postgres -c "psql -p 6542 -d candy -c 'DELETE FROM tokens;'"
   ```
 - **App wedged**: `ssh francesco 'cd /opt/stack && docker compose restart
-  halloween'`. All state lives in Postgres; screens reconnect on their own
+halloween'`. All state lives in Postgres; screens reconnect on their own
   (SSE auto-reconnects with backoff) and the projection re-seeds count +
   game status from `/api/state`.
 - **Bad deploy**: `make rollback TAG=<previous-sha>`.
@@ -167,11 +164,9 @@ per-year, so next year is a settings row away.
 - `docs/api.md` - full API + WebSocket protocol reference
 - `docs/deployment.md` - deploy loop (`make deploy`, smoke, rollback) + server shape
 - `docs/configuration.md` - env vars, profiles, token rotation detail
-- `docs/design-decisions.md` - ADRs (ADR-013/014 cover the deployment topology)
 - `docs/PRD_2026_HALLOWEEN.md` - product requirements (topology superseded by ADR-013/014)
 - `TODO.md` - known gaps vs the PRD
 
 ## Credits
 
 - Zombie animations: [Rive Community](https://rive.app/community/files/205-385-zombie-character/)
-- Original counter design: last year's Node version

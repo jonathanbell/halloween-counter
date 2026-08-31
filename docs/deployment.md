@@ -12,9 +12,6 @@ The box documents itself: its rules and runbooks live on the server (under
 document covers the day-to-day loop from this machine, plus enough of the
 server's shape to reason about failures.
 
-ADR-014 in `docs/design-decisions.md` records why the repo no longer ships
-its own compose/Caddy/Postgres stack.
-
 ## Topology
 
 ```
@@ -152,15 +149,15 @@ update.
 
 ## Failure modes
 
-| Failure | Effect | Response |
-|---------|--------|----------|
-| Garage wifi drops | Projection freezes at last count | Tether laptop to a phone hotspot; SSE reconnects on its own |
-| Admin phone wifi drops | Increment button fails | Phone falls back to LTE automatically; keep cell data on |
-| App wedged | All screens stall | `ssh francesco 'cd /opt/stack && docker compose restart halloween'`; state is in Postgres |
-| Bad deploy | Errors after release | `make rollback TAG=<previous-sha>` |
-| 502 mentioning `127.0.0.11:53` | Stale Docker DNS on the box | `cd /opt/stack && docker compose down && docker compose up -d` (never `-v` - see the box runbook) |
-| Plain 502 right after deploy | App still booting (~30 s) | Wait; `make logs` if it persists |
-| Count is wrong | Wrong number on the door | `/settings.html` Set Total Count (writes an adjustment, deletes nothing) |
+| Failure                        | Effect                           | Response                                                                                          |
+| ------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Garage wifi drops              | Projection freezes at last count | Tether laptop to a phone hotspot; SSE reconnects on its own                                       |
+| Admin phone wifi drops         | Increment button fails           | Phone falls back to LTE automatically; keep cell data on                                          |
+| App wedged                     | All screens stall                | `ssh francesco 'cd /opt/stack && docker compose restart halloween'`; state is in Postgres         |
+| Bad deploy                     | Errors after release             | `make rollback TAG=<previous-sha>`                                                                |
+| 502 mentioning `127.0.0.11:53` | Stale Docker DNS on the box      | `cd /opt/stack && docker compose down && docker compose up -d` (never `-v` - see the box runbook) |
+| Plain 502 right after deploy   | App still booting (~30 s)        | Wait; `make logs` if it persists                                                                  |
+| Count is wrong                 | Wrong number on the door         | `/settings.html` Set Total Count (writes an adjustment, deletes nothing)                          |
 
 The app's data lives in the box's host PostgreSQL, which is managed and
 backed up as part of that server, not from this repo.

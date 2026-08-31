@@ -4,13 +4,13 @@ Environment variables and config files for the Spring Boot backend.
 
 ## Environment Variables
 
-| Variable | Required (Prod) | Purpose |
-|-----------|--------------|---------|
-| `DATABASE_URL` | ✅ yes | JDBC URL of your Postgres (e.g., `jdbc:postgresql://host:5432/candy`) |
-| `DATABASE_USER` | ✅ yes | DB user |
-| `DATABASE_PASSWORD` | ✅ yes | DB password |
-| `ADMIN_TOKEN` | ✅ yes | Token accepted at `/api/counter` (scale event increment authors) |
-| `SETTINGS_TOKEN` | ✅ yes | Token accepted at `/api/settings` (year config mutations) |
+| Variable            | Required (Prod) | Purpose                                                               |
+| ------------------- | --------------- | --------------------------------------------------------------------- |
+| `DATABASE_URL`      | ✅ yes          | JDBC URL of your Postgres (e.g., `jdbc:postgresql://host:5432/candy`) |
+| `DATABASE_USER`     | ✅ yes          | DB user                                                               |
+| `DATABASE_PASSWORD` | ✅ yes          | DB password                                                           |
+| `ADMIN_TOKEN`       | ✅ yes          | Token accepted at `/api/counter` (scale event increment authors)      |
+| `SETTINGS_TOKEN`    | ✅ yes          | Token accepted at `/api/settings` (year config mutations)             |
 
 In production these are set on the server: `/opt/stack/.env` holds
 `HALLOWEEN_DB_PASSWORD`, `HALLOWEEN_ADMIN_TOKEN`, and
@@ -24,10 +24,12 @@ Throw tokens from `@Value("${admin.token:...}")` / `@Value("${admin.settings-tok
 ## Profiles (src/main/resources)
 
 `application.yml`
+
 - Defaults used anywhere, usually empty
 - PG defaults — the production profile builds for Docker tour
 
 `application-local.yml`
+
 - H2 in-memory (`MODE=PostgreSQL` for cross-compatibility)
 - Different DB_URL reference for developer experience (`jdbc:h2:mem:candydb;MODE=PostgreSQL`)
 - Hardcoded tokens (`dev-admin-token` / `dev-settings-token`) burned in
@@ -65,10 +67,6 @@ DATABASE_PASSWORD=password
 
 - SSE broadcasters use `CopyOnWriteArrayList` — broadcast + unlimited access unpaired
 - WebSocket session maps via `ConcurrentHashMap`
-
-## Where flux event publishing handles callbacks
-
-Counter increment pushes `ApplicationEventPublisher.publishEvent` and awaits until AFTER_COMMIT via `TransactionalEventListener(phase = AFTER_COMMIT)` on SseBroadcaster. Runtime publishing avoids connection-receive for booth tree downstream publishing.
 
 ## Token Rotation
 

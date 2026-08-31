@@ -49,6 +49,7 @@ EventSource subscription (SSE, no timeout). One JSON payload per message:
 ```
 
 Notes:
+
 - `total` is always the increment total, even on `vote` messages.
 - `initialCandyCount` rides along on count messages so supply changes made
   in settings reach every screen without a refresh.
@@ -62,7 +63,7 @@ Notes:
 
 ### `POST /api/effects/lightning` / `POST /api/effects/candy-rain`
 
-Trigger projection visuals. `year` query param optional (default 2026).
+Trigger projection visuals. `year` query param optional (default for 2026).
 Server-side cooldown of 7s per effect type; within cooldown:
 
 ```json
@@ -182,11 +183,11 @@ charge the same zombie a second time, and its removal is broadcast over SSE.
 
 ### Difficulty levels
 
-| Level | Spawn interval | Zombie TTL | Hit score | Max concurrent |
-|-----------|------|--------|----|---|
-| easy | 600ms | 3000ms | +1 | 1 |
-| hard | 400ms | 2000ms | +1 | 3 |
-| lightning | 500ms | 1500ms | +2 | 1 |
+| Level     | Spawn interval | Zombie TTL | Hit score | Max concurrent |
+| --------- | -------------- | ---------- | --------- | -------------- |
+| easy      | 600ms          | 3000ms     | +1        | 1              |
+| hard      | 400ms          | 2000ms     | +1        | 3              |
+| lightning | 500ms          | 1500ms     | +2        | 1              |
 
 Miss is always -1. Games auto-end after 30s; a disconnect ends the game
 immediately.
