@@ -16,14 +16,23 @@ plus known deployment blockers.
 - [x] Image builds for amd64 and the full compose stack verified locally:
       Flyway V1-V5 migrate on Postgres 16, health/state/auth/increment/stats
       endpoints all correct (2025 seed intact)
-- [ ] DNS A record: `halloween-counter.jonathanbell.ca` -> the cloud box
-- [ ] Box prep: Docker + ufw (80/443/SSH), copy `deploy/`, fill `deploy/.env`
-- [ ] First deploy: build (`--platform linux/amd64`), ship, `compose up -d`,
-      verify `/actuator/health` over HTTPS
-- [ ] Regenerate + print QR codes for the new domain, rebundle, re-ship
-- [ ] Backup cron on the box (`deploy/backup.sh`)
-- [ ] October dress rehearsal (checklist at the bottom of
-      `docs/deployment.md`)
+- [x] DNS A record: resolves to francesco (5.78.90.6)
+- [x] One-time server setup on the box: `candy` DB + role, `HALLOWEEN_*`
+      secrets, compose service block, Caddy site block - all in place
+- [x] First deploy shipped and verified on 2026-08-31
+      (`candy-counter:2026-test-1`): Flyway V1-V5 on the host Postgres,
+      HTTPS cert issued, SSE heartbeat streams through Caddy, WS upgrade
+      reaches the app, no leaky headers, app at ~290 MiB of its 768 MiB cap.
+      Two first-boot bugs found and fixed along the way: missing
+      `flyway-database-postgresql`, and `baseline-on-migrate: true`
+      silently skipping V1 because the box's `template1` seeds new
+      databases with orphan sequences (now `false`; fails loudly instead)
+- [ ] Tell the box's admin that `template1` is dirty (six orphan
+      `*_id_seq` sequences) - every future `CREATE DATABASE` inherits them
+- [ ] Regenerate + print QR codes with real tokens, then `make deploy`
+- [ ] Switch to git-sha tags after the test period (`make deploy` with no
+      TAG override does this automatically)
+- [ ] October dress rehearsal (checklist in `docs/deployment.md`)
 
 ## Bugs (code review, 2026-08-30)
 

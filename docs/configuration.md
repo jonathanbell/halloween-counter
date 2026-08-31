@@ -12,11 +12,12 @@ Environment variables and config files for the Spring Boot backend.
 | `ADMIN_TOKEN` | ✅ yes | Token accepted at `/api/counter` (scale event increment authors) |
 | `SETTINGS_TOKEN` | ✅ yes | Token accepted at `/api/settings` (year config mutations) |
 
-In the production compose stack these are set in `deploy/.env` (template:
-`deploy/.env.example`, gitignored) and wired to the containers by
-`deploy/docker-compose.yml` - `DATABASE_URL`/`DATABASE_USER` are fixed there
-to the compose-internal `postgres` service, so only the password and the two
-tokens need values. See `docs/deployment.md`.
+In production these are set on the server: `/opt/stack/.env` holds
+`HALLOWEEN_DB_PASSWORD`, `HALLOWEEN_ADMIN_TOKEN`, and
+`HALLOWEEN_SETTINGS_TOKEN`, which the box's compose service block maps onto
+the variables above (`DATABASE_URL`/`DATABASE_USER` are fixed there to the
+host PostgreSQL). See `docs/deployment.md` for the server's shape. For the
+local smoke stack, `compose.smoke.yml` supplies throwaway values.
 
 Throw tokens from `@Value("${admin.token:...}")` / `@Value("${admin.settings-token:...}")` injection into `AdminTokenFilter` on each request.
 
@@ -35,9 +36,10 @@ Throw tokens from `@Value("${admin.token:...}")` / `@Value("${admin.settings-tok
 
 Postgres won't exist and Create Table ... is run upon app start with Flyway V1/V2/V3 migrations. Create the database alone (`CREATE DATABASE candy;`) if needed and supply its URL. Flyway auto-migrations run through startup.
 
-In the production compose stack none of this is manual: the `postgres`
-container creates the `candy` database from its `POSTGRES_DB` env on first
-boot, and Flyway migrates it when the app starts.
+In production the `candy` database and role are created once on the
+server's host PostgreSQL; Flyway migrates it when the app first starts.
+In the local smoke stack (`compose.smoke.yml`) the Postgres container
+creates the database itself.
 
 Sample local Postgres under Docker:
 
@@ -109,8 +111,7 @@ npm run qr https://halloween-counter.jonathanbell.ca \
 ```
 
 This writes `public/qr/admin-qr.png` and `public/qr/settings-qr.png`.
-Then `npm run bundle` (which copies them into the static bundle), rebuild
-the image, and re-ship it (`docs/deployment.md`).
+Then `make deploy` (it rebundles, rebuilds the image, and ships it).
 
 ### Emergency recovery
 

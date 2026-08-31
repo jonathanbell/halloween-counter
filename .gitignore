@@ -20,7 +20,3 @@ dist/
 # OS
 .DS_Store
 .claude/
-
-# Deployment secrets and local backups
-deploy/.env
-deploy/backups/

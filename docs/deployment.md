@@ -1,254 +1,151 @@
-# Deployment Guide: Cloud Box Topology
+# Deployment Guide
 
-How the candy counter is deployed for Halloween 2026. This supersedes the
-Tailscale topology described in the PRD (sections 2 and 8); the decision
-record is ADR-013 in `docs/design-decisions.md`.
+The app deploys to `francesco`, a shared Ubuntu box that already runs a
+Caddy reverse proxy, other apps, and a host PostgreSQL 16. This repo ships
+exactly two deployment artifacts: the `Dockerfile` (the image) and the
+`Makefile` (the release loop from this machine). All server-side runtime
+configuration lives on the box itself, in its single compose project at
+`/opt/stack`.
+
+The box documents itself: its rules and runbooks live on the server (under
+`/root`), and that is where server-side questions get answered. This
+document covers the day-to-day loop from this machine, plus enough of the
+server's shape to reason about failures.
+
+ADR-014 in `docs/design-decisions.md` records why the repo no longer ships
+its own compose/Caddy/Postgres stack.
 
 ## Topology
 
-Everything runs on one Ubuntu cloud server (Oregon). The garage laptop is
-just a browser. Tailscale is not used.
-
 ```
-                    [halloween-counter.jonathanbell.ca]
-                                   |
-                              DNS A record
-                                   |
-                  +----------------v-----------------+
-                  |     UBUNTU CLOUD BOX (Oregon)    |
-                  |                                  |
-                  |  [caddy]  :80/:443 (published)   |
-                  |     |  TLS via Let's Encrypt     |
-                  |     v                            |
-                  |  [app]  :8080 (compose network)  |
-                  |     |  Spring Boot + static UI   |
-                  |     v                            |
-                  |  [postgres]  :5432 (compose      |
-                  |      network only, pgdata volume)|
-                  +----------------------------------+
-                        ^                    ^
-        HTTPS + WSS     |                    |    HTTPS + WSS
-                        |                    |
-        [Garage laptop browser]     [Phones: viewer / admin / game]
-        /?projection&token=...      QR codes -> the public domain
+                 [halloween-counter.jonathanbell.ca]
+                                 |
+              +------------------v-------------------+
+              |  FRANCESCO (shared Ubuntu box)       |
+              |                                      |
+              |  [stack-caddy]  :80/:443             |
+              |     | owns TLS for all sites on box  |
+              |     v                                |
+              |  [stack-halloween]  :8080 internal   |
+              |     | Spring Boot + static bundle    |
+              |     v                                |
+              |  host PostgreSQL 16  (172.30.0.1:6542,
+              |     `candy` DB, role `candy`)        |
+              |                                      |
+              |  ...other apps in the same stack     |
+              +--------------------------------------+
+                    ^                        ^
+     [Garage laptop browser]        [Phones: viewer/admin/game]
 ```
 
-Old topology for contrast: app on a personal server reached by the garage
-laptop over Tailscale WireGuard and by phones over a Tailscale Funnel URL,
-with a managed remote Postgres. All three hops are gone.
+House rules on that box (details in its own docs): only Caddy publishes
+ports, secrets live in `/opt/stack/.env` (`HALLOWEEN_*` variables), image
+tags are pinned (no `:latest`), and RAM is the scarce resource - the app
+runs under a 768 MiB `mem_limit`.
 
-## Why this works (and the latency question)
+## Day-to-day: the Makefile
 
-- The frontend has no localhost assumptions: API calls are relative, the
-  game WebSocket URL is derived from `location.host`, and `wss:` is picked
-  automatically on HTTPS pages. No code changes were needed for this move.
-- BC to Oregon is 15-35 ms RTT on home internet, 50-90 ms on phone LTE.
-  The game's hit/miss window is the zombie TTL (1500-3000 ms), and the
-  server ticks at 500-600 ms. Network jitter is two orders of magnitude
-  below anything a player can perceive. The phone UI also removes tapped
-  zombies optimistically, so tap feedback is instant regardless.
-- The old phone path went through Tailscale Funnel's relays; going direct
-  to the box is equal or faster.
-- The honest tradeoff: the night now depends on garage internet staying
-  up. See "Failure modes" below.
-
-## Prerequisites
-
-- Ubuntu 22.04+ cloud server, 2 GB RAM recommended (the app is capped at
-  `-Xmx384m`; 1 GB works but leaves little headroom next to Postgres).
-- SSH access with keys.
-- Control of DNS for `jonathanbell.ca`.
-- Docker + the compose plugin on the server, and Docker locally to build.
-
-## One-time server setup
-
-1. **DNS**: create an A record for `halloween-counter.jonathanbell.ca`
-   pointing at the box's public IP. Verify with
-   `dig +short halloween-counter.jonathanbell.ca`.
-
-2. **Docker** (on the box):
-
-   ```bash
-   curl -fsSL https://get.docker.com | sh
-   sudo usermod -aG docker $USER   # log out/in afterwards
-   ```
-
-3. **Firewall**: only SSH, HTTP, and HTTPS are reachable.
-
-   ```bash
-   sudo ufw allow OpenSSH
-   sudo ufw allow 80/tcp
-   sudo ufw allow 443/tcp
-   sudo ufw enable
-   ```
-
-   Note: Docker publishes ports by bypassing ufw, so the real guarantee is
-   the compose file itself - only `caddy` has a `ports:` section. The app
-   and Postgres exist solely on the compose-internal network and are not
-   reachable from the internet no matter what ufw says.
-
-4. **Deploy directory**: copy the `deploy/` folder to the box (or clone the
-   repo). Then create the secrets file:
-
-   ```bash
-   cd deploy
-   cp .env.example .env
-   openssl rand -hex 24   # run three times: db password, admin, settings
-   vim .env
-   ```
-
-## Building and shipping the image
-
-The image is built locally and shipped to the box. Two options.
-
-**Important (Apple Silicon):** the Mac builds arm64 by default; a typical
-cloud box is amd64. Always cross-build:
+Everything runs from this repo on the Mac. `francesco` is an alias in
+`~/.ssh/config`.
 
 ```bash
-docker build --platform linux/amd64 -t candy-counter:latest .
+make deploy          # bundle -> build amd64 image -> ship -> release -> verify
+make smoke           # boot the built image + throwaway Postgres on :8080
+make smoke-down      # stop the local smoke stack
+make rollback TAG=x  # re-point the server at an already-shipped tag
+make logs            # tail app logs on the server
+make status          # compose ps + memory on the server
+make verify          # health + public state check
 ```
 
-Remember the frontend: if any frontend source changed, run `npm run bundle`
-first so the image picks up the current static bundle.
+Images are tagged with the git short sha (`candy-counter:<sha>`, plus
+`-dirty` if the tree has uncommitted changes), so every deploy is
+traceable and `make rollback TAG=<previous-sha>` is exact. Old images stay
+loaded on the box until pruned - keep the last known-good one.
 
-### Option A: docker save over SSH (no registry, default)
+`make deploy` refuses to run until the one-time server setup exists, and
+`make verify` checks health from inside the container first (the public
+`/actuator` may be 404'd at the proxy), then hits the public API.
 
-```bash
-docker save candy-counter:latest | gzip | \
-  ssh <server> 'gunzip | docker load'
-```
+## Before shipping anything real
 
-The compose file references `candy-counter:latest`, which matches the
-loaded tag directly.
+- `make smoke` boots the exact image against real Postgres 16 locally.
+  This is what caught Flyway's missing Postgres module - H2 and the unit
+  tests cannot catch that class of bug. Run it before first-of-season
+  deploys and after dependency changes.
+- If frontend source changed, `make deploy` already rebundles (`bundle` is
+  a dependency of `image`).
 
-### Option B: GitHub Container Registry
+## What exists on the box (one-time setup, done server-side)
 
-```bash
-docker tag candy-counter:latest ghcr.io/<user>/candy-counter:latest
-docker push ghcr.io/<user>/candy-counter:latest
-```
+`make deploy` assumes this is in place; it was set up once on the box,
+whose own docs are authoritative:
 
-Then change `image:` in `deploy/docker-compose.yml` to the ghcr path and
-`docker compose pull` on the box. Requires a `docker login ghcr.io` there.
+- DNS A record for `halloween-counter.jonathanbell.ca` -> the box.
+- A `candy` database and `candy` role on the host PostgreSQL (port 6542,
+  reachable from containers at `172.30.0.1`, `sslmode=require`).
+- `HALLOWEEN_DB_PASSWORD` / `HALLOWEEN_ADMIN_TOKEN` /
+  `HALLOWEEN_SETTINGS_TOKEN` in `/opt/stack/.env` (mode 0600), mapped onto
+  the app's env-var contract by the compose service block.
+- The `halloween` service in `/opt/stack/compose.yaml`: pinned
+  `candy-counter:<tag>` image, `mem_limit: 768m`, internal network only,
+  `${VAR:?}` guards so missing secrets fail loudly instead of booting on
+  the app's weak built-in token defaults.
+- A Caddy site block proxying the domain to `halloween:8080` (Caddy
+  auto-issues the certificate; SSE and WebSocket pass through without
+  extra config, and gzip is deliberately off because compression and SSE
+  interact badly).
 
-## First deploy
-
-```bash
-cd deploy
-docker compose up -d
-docker compose logs -f app     # watch Flyway run V1..V5 on first boot
-```
-
-Flyway creates and seeds the schema automatically (settings row for 2026,
-the 2025 comparison data, everything). There is no manual SQL step.
-
-Verify:
-
-```bash
-curl https://halloween-counter.jonathanbell.ca/actuator/health   # {"status":"UP"}
-curl https://halloween-counter.jonathanbell.ca/api/state?year=2026
-```
-
-Caddy fetches the TLS certificate on the first request; if HTTPS fails in
-the first minute, check `docker compose logs caddy` (usually DNS not
-propagated yet or port 80 blocked).
+After that, `make deploy` handles every release.
 
 ## QR codes
 
-Tokens are baked into the printed QR codes, so generate them after `.env`
-is final:
+Unchanged by the topology: generate against the public domain, rebundle,
+redeploy.
 
 ```bash
 npm run qr https://halloween-counter.jonathanbell.ca <admin-token> <settings-token>
-# writes public/qr/admin-qr.png + settings-qr.png
+make deploy
 ```
 
-Then `npm run bundle`, rebuild the image, and re-ship (the QR pages are
-served from the static bundle). Print:
+## Verification beyond `make verify`
 
-- Public QR: just `https://halloween-counter.jonathanbell.ca` (viewers)
-- Admin QR (private): `/remote.html?token=...`
-- Settings QR (private): `/settings.html?token=...`
+For a first deploy or the dress rehearsal, also prove the two streaming
+transports survive the proxy - these are the things a reverse proxy
+breaks silently.
 
-## Backups
-
-Postgres data lives in the `pgdata` volume on the box. `deploy/backup.sh`
-writes a timestamped `pg_dump` to `deploy/backups/` and keeps the last 30.
-
-Nightly cron on the box:
-
-```
-0 9 * * * /home/<user>/deploy/backup.sh >> /home/<user>/deploy/backups/backup.log 2>&1
-```
-
-On Halloween: run it once before the night starts and once after. Restore:
+SSE must sit open and dribble events out (not return everything at once
+at the end):
 
 ```bash
-gunzip -c backups/candy-<stamp>.sql.gz | \
-  docker compose exec -T postgres psql -U candy_user -d candy
+curl -N --max-time 15 https://halloween-counter.jonathanbell.ca/api/events
 ```
 
-Optionally scp a dump off the box for an off-machine copy.
-
-## Updating the app
+The WebSocket upgrade must reach the app - expect `101` (or a 400/426
+from the app), not a 502 from the proxy:
 
 ```bash
-# locally
-npm run bundle                                      # if frontend changed
-docker build --platform linux/amd64 -t candy-counter:latest .
-docker save candy-counter:latest | gzip | ssh <server> 'gunzip | docker load'
-
-# on the box
-cd deploy && docker compose up -d app
+curl -sSi -o /dev/null -w '%{http_code}\n' \
+  -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+  -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+  https://halloween-counter.jonathanbell.ca/ws/game
 ```
 
-State survives restarts: everything lives in Postgres, SSE clients
-reconnect automatically with backoff, and the projection re-seeds itself
-from `/api/state` (including mid-game status).
-
-## Token rotation on this topology
-
-Rotation works exactly as documented in `docs/configuration.md`, against
-the public domain:
-
-```bash
-curl -X POST https://halloween-counter.jonathanbell.ca/api/tokens/rotate \
-  -H "Authorization: Bearer $SETTINGS_TOKEN" \
-  -H "Content-Type: application/json" -d '{"name": "admin"}'
-```
-
-Emergency recovery (all tokens lost) - the env vars in `.env` are the
-fallback once the DB rows are gone:
-
-```bash
-docker compose exec postgres psql -U candy_user -d candy -c 'DELETE FROM tokens;'
-```
-
-## Operations quick reference
-
-```bash
-docker compose ps                      # stack status
-docker compose logs -f app             # app logs (Flyway, requests, game)
-docker compose logs -f caddy           # TLS / proxy logs
-docker compose restart app             # bounce just the app
-docker compose exec postgres psql -U candy_user -d candy   # SQL shell
-docker compose down                    # stop stack (volumes persist)
-```
+The real test is opening the page in a browser and watching the counter
+update.
 
 ## Dress rehearsal (do this in October)
 
-- [ ] Full deploy from scratch using only this document
+- [ ] `make deploy` a fresh build; `make verify` passes
 - [ ] Projection open on the garage laptop over garage wifi for 1+ hour;
-      confirm the count updates and the SSE connection survives idling
-- [ ] Increment from the admin phone on cellular (not wifi) - this proves
-      the cell-data fallback works
+      count updates and the SSE connection survives idling
+- [ ] Increment from the admin phone on cellular (not wifi)
 - [ ] Play a full game on each difficulty from a phone; judge lag yourself
 - [ ] Fire both effects; confirm 7 s cooldown and projection visuals
-- [ ] Kill the app container mid-count (`docker compose restart app`);
-      confirm screens recover without a manual refresh
-- [ ] Reboot the box; confirm the stack comes back (`restart:
-      unless-stopped` + Docker's boot service) and HTTPS still works
-- [ ] Run `backup.sh`, restore the dump into a scratch database
+- [ ] `ssh francesco 'cd /opt/stack && docker compose restart halloween'`
+      mid-count; screens recover without a manual refresh
+- [ ] `make rollback TAG=<previous>` and back - prove the path works
+- [ ] `make status` - box memory is sane with the app under load
 - [ ] `ping halloween-counter.jonathanbell.ca` from garage wifi and phone
       LTE; expect well under 100 ms
 
@@ -258,12 +155,11 @@ docker compose down                    # stop stack (volumes persist)
 |---------|--------|----------|
 | Garage wifi drops | Projection freezes at last count | Tether laptop to a phone hotspot; SSE reconnects on its own |
 | Admin phone wifi drops | Increment button fails | Phone falls back to LTE automatically; keep cell data on |
-| App container wedged | All screens stall | `docker compose restart app`; state is in Postgres |
-| Box reboots | Minutes of downtime | Stack auto-starts; verify with `/actuator/health` |
-| Cert renewal broken | HTTPS errors | `docker compose logs caddy`; check DNS + port 80 |
+| App wedged | All screens stall | `ssh francesco 'cd /opt/stack && docker compose restart halloween'`; state is in Postgres |
+| Bad deploy | Errors after release | `make rollback TAG=<previous-sha>` |
+| 502 mentioning `127.0.0.11:53` | Stale Docker DNS on the box | `cd /opt/stack && docker compose down && docker compose up -d` (never `-v` - see the box runbook) |
+| Plain 502 right after deploy | App still booting (~30 s) | Wait; `make logs` if it persists |
 | Count is wrong | Wrong number on the door | `/settings.html` Set Total Count (writes an adjustment, deletes nothing) |
-| Postgres data loss | Counter resets | Restore latest `backups/` dump |
 
-The single realistic risk for the night is garage internet. The cloud box,
-by contrast, is in a datacenter with better uptime than anything in the
-garage. Cell tethering covers the gap either way.
+The app's data lives in the box's host PostgreSQL, which is managed and
+backed up as part of that server, not from this repo.

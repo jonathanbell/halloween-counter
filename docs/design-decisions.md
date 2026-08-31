@@ -101,6 +101,38 @@ Rationale:
 **Decision:** one cloud box, compose stack (caddy + app + postgres), no
 Tailscale. Full runbook in `docs/deployment.md`.
 
+*Amended by ADR-014: the cloud-box direction stands, but the dedicated
+compose stack this ADR shipped was replaced when the target turned out to
+be a shared server.*
+
+## ADR-014: Deploy to the shared box `francesco`; repo ships only the image (2026-08-31)
+
+ADR-013 assumed a dedicated, empty server and shipped a self-contained
+stack (`deploy/`: own Caddy, own Postgres container, own compose project).
+The actual target is `francesco`, a shared box that already runs a Caddy
+owning ports 80/443, a host PostgreSQL 16, and one compose project at
+`/opt/stack`. On that box the repo's stack is not redundant but harmful:
+a second Caddy fails to bind (taking the port fight to the existing
+sites), a second Postgres wastes the box's scarcest resource (RAM), and a
+second compose project violates its one-project rule.
+
+So the split is now:
+
+- **This repo ships**: the `Dockerfile`, the env-var contract
+  (`docs/configuration.md`), a `Makefile` (build, ship over ssh, release,
+  rollback, verify), and `compose.smoke.yml` for local testing against
+  real Postgres.
+- **The box owns**: its compose service block, the Caddy site block, the
+  `candy` database on the host PostgreSQL, and secrets in
+  `/opt/stack/.env` - all maintained on the box, alongside its own
+  runbooks.
+- Images are tagged by git sha, shipped with `docker save | ssh | docker
+  load`, and released by re-pointing the box's compose file - which makes
+  rollback an exact, one-command operation.
+
+**Decision:** the repo builds and ships a pinned image; all runtime
+topology belongs to the server. `deploy/` is deleted.
+
 ---
 
 More context in `agents.md` root file. All of the exact texts above are specific design decisions made by session, not preferences.

@@ -1,13 +1,13 @@
 # Halloween 2026 Candy Counter 🎃
 
-Spring Boot + Vite/React counter projected onto a garage door. Live count, votes, interactive effects, and a WebSocket game (Whack-a-Zombie). Deploys as a compose stack (Caddy + app + Postgres) on a single cloud server behind `halloween-counter.jonathanbell.ca`; the garage laptop is just a browser.
+Spring Boot + Vite/React counter projected onto a garage door. Live count, votes, interactive effects, and a WebSocket game (Whack-a-Zombie). Deploys as a Docker image to a shared cloud server behind `halloween-counter.jonathanbell.ca` (`make deploy`); the garage laptop is just a browser.
 
 ## Prerequisites
 
 - Java 21 (Temurin/Corretto) + Maven 3.9+
 - Node 20+ / npm
-- Docker (deployment only)
-- Postgres (production only, provided by the compose stack; local dev uses
+- Docker (deployment and `make smoke` only)
+- Postgres (production only, provided by the server; local dev uses
   in-memory H2)
 
 ## Install
@@ -83,20 +83,20 @@ Full reference with payloads: `docs/api.md`.
 
 PostgreSQL via Flyway migrations (`V1` events, `V2` settings, `V3` count_adjustment, `V4` 2025 seed, `V5` tokens). Quoted `"year"`/`"timestamp"` identifiers to survive H2 and PG reserved-word crossfire. `currentTotal = COUNT(increments) + count_adjustment`, so admin overrides never delete history.
 
-## Docker
+## Deploying
 
 ```bash
-# On Apple Silicon: cross-build for the amd64 cloud box
-docker build --platform linux/amd64 -t candy-counter:latest .
+make deploy          # bundle -> amd64 image -> ship over ssh -> release -> verify
+make smoke           # boot the image + throwaway Postgres locally on :8080
+make rollback TAG=x  # re-point the server at an already-shipped tag
+make logs            # tail the app logs on the server
 ```
 
-Two-stage build (Maven -> JRE 21). Tokens have no baked defaults - they come
-from `deploy/.env` in production. Health: `GET /actuator/health` (used by
-the container HEALTHCHECK).
-
-Production runs via `deploy/docker-compose.yml`: Caddy terminates TLS
-(automatic Let's Encrypt), and the app + Postgres live only on the internal
-compose network. Full guide: `docs/deployment.md`.
+Two-stage Docker build (Maven -> JRE 21), images tagged by git sha. The
+server (`francesco`, a shared box) owns all runtime config - its Caddy
+terminates TLS, its host PostgreSQL holds the data, and secrets live in its
+`/opt/stack/.env`. Full guide: `docs/deployment.md`. Health:
+`GET /actuator/health` (used by the container HEALTHCHECK).
 
 ## Halloween Night Runbook
 
@@ -105,23 +105,22 @@ compose network. Full guide: `docs/deployment.md`.
 Full detail in `docs/deployment.md` (including the October dress-rehearsal
 checklist); the short version:
 
-1. DNS A record: `halloween-counter.jonathanbell.ca` -> the cloud box.
-2. On the box: Docker + ufw (80/443/SSH only), copy `deploy/`, fill in
-   `deploy/.env` with `openssl rand -hex 24` values.
-3. Build locally (`docker build --platform linux/amd64 ...`), ship with
-   `docker save | ssh ... docker load`, then `docker compose up -d`.
-   Flyway migrates and seeds on first boot; check
-   `https://halloween-counter.jonathanbell.ca/actuator/health` returns `UP`.
-4. Bake and print QR codes:
+1. One-time server setup on the box (see `docs/deployment.md` for what
+   exists there): DNS record, `candy` database + role on the host
+   PostgreSQL, `HALLOWEEN_*` secrets in `/opt/stack/.env`, compose service
+   block, Caddy site block.
+2. `make smoke` locally, then `make deploy`. Flyway migrates and seeds on
+   first boot; `make verify` confirms health and the public API.
+3. Bake and print QR codes:
    ```bash
    npm run qr https://halloween-counter.jonathanbell.ca <admin-token> <settings-token>
    # writes public/qr/admin-qr.png + settings-qr.png
    ```
-   Rebundle + re-ship so the printed QRs are also served by the app. Print
-   a public QR (plain URL) for viewers, keep the admin/settings QRs private.
-5. Set the candy supply: open `/settings.html?token=<settings>` and set
+   Then `make deploy` again so the printed QRs are also served by the app.
+   Print a public QR (plain URL) for viewers, keep the admin/settings QRs
+   private.
+4. Set the candy supply: open `/settings.html?token=<settings>` and set
    Initial Candy Count.
-6. Run `deploy/backup.sh` once so the backup path is proven.
 
 ### Showtime
 
@@ -143,13 +142,16 @@ checklist); the short version:
     -H "Content-Type: application/json" -d '{"name": "admin"}'
   ```
 - **All tokens lost**: delete the `tokens` rows to restore the env-var values
-  (per-request, no restart needed):
+  (per-request, no restart needed). On the server:
   ```bash
-  docker compose exec postgres psql -U candy_user -d candy -c 'DELETE FROM tokens;'
+  ssh francesco
+  su - postgres -c "psql -p 6542 -d candy -c 'DELETE FROM tokens;'"
   ```
-- **App wedged**: `docker compose restart app` on the box. All state lives in
-  Postgres; screens reconnect on their own (SSE auto-reconnects with backoff)
-  and the projection re-seeds count + game status from `/api/state`.
+- **App wedged**: `ssh francesco 'cd /opt/stack && docker compose restart
+  halloween'`. All state lives in Postgres; screens reconnect on their own
+  (SSE auto-reconnects with backoff) and the projection re-seeds count +
+  game status from `/api/state`.
+- **Bad deploy**: `make rollback TAG=<previous-sha>`.
 - **Garage internet down**: tether the laptop to a phone hotspot; the admin
   phone falls back to cellular automatically. The app itself is unaffected -
   it lives in a datacenter, not the garage.
@@ -163,10 +165,10 @@ per-year, so next year is a settings row away.
 
 - `AGENTS.md` - agent-focused project guide (architecture, data model, conventions)
 - `docs/api.md` - full API + WebSocket protocol reference
-- `docs/deployment.md` - cloud box deployment runbook (compose, TLS, backups)
+- `docs/deployment.md` - deploy loop (`make deploy`, smoke, rollback) + server shape
 - `docs/configuration.md` - env vars, profiles, token rotation detail
-- `docs/design-decisions.md` - ADRs (ADR-013 covers the cloud topology)
-- `docs/PRD_2026_HALLOWEEN.md` - product requirements (topology superseded by ADR-013)
+- `docs/design-decisions.md` - ADRs (ADR-013/014 cover the deployment topology)
+- `docs/PRD_2026_HALLOWEEN.md` - product requirements (topology superseded by ADR-013/014)
 - `TODO.md` - known gaps vs the PRD
 
 ## Credits

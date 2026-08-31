@@ -33,23 +33,25 @@ Do not attempt to integrate it. Use Spring Boot (Maven) only.
                      HTTPS/WSS to the public domain
               (halloween-counter.jonathanbell.ca, QR codes)
                                ↓
-      [UBUNTU CLOUD BOX - docker compose, see deploy/]
-        [CADDY :443]  TLS (Let's Encrypt), reverse proxy
+      [FRANCESCO - shared Ubuntu box, one compose project at /opt/stack]
+        [stack-caddy :80/:443]  owns TLS for every site on the box
                 ↓
-        [SPRING BOOT APP :8080, compose-internal]
+        [stack-halloween :8080, internal network only]
             ├── SSE  (/api/events)          → counter/state
             ├── REST (/api/counter etc.)    → admin mutations
             ├── REST to public effects/vote/stats
             └── WebSocket (/ws/game)        → Whack-a-Zombie game
                 ↓
-        [POSTGRES :5432, compose-internal, pgdata volume]
+        [host PostgreSQL 16, 172.30.0.1:6542, `candy` DB]
             ├── events   (increment/vote/effects, timestamped)
             └── settings (year, initialCandy, countAdjustment)
 ```
 
-Topology decided in ADR-013 (`docs/design-decisions.md`): everything on one
-cloud server, no Tailscale. The garage laptop is a plain browser client.
-Deployment runbook: `docs/deployment.md`.
+Topology: ADR-013/ADR-014 (`docs/design-decisions.md`) - one shared cloud
+server, no Tailscale; this repo ships only the image. The garage laptop is
+a plain browser client. Deploys: `Makefile` + `docs/deployment.md`. The
+box's own runtime config (compose service, Caddy site block, secrets) is
+maintained on the box, not in this repo.
 
 Two browsers machines:
 - **Projector** = shows `/` with `?projection` flag to hide viewer controls
@@ -263,15 +265,17 @@ Dockerfile 2-stage:
   2. eclipse-temurin:21-jre           → runtime only
 ```
 
-Production runs as a compose stack on one Ubuntu cloud box (`deploy/`):
-caddy (TLS) → app → postgres, with Postgres and the app on the internal
-compose network only. Secrets (DATABASE_PASSWORD, ADMIN_TOKEN,
-SETTINGS_TOKEN) come from `deploy/.env` (gitignored; template in
-`deploy/.env.example`). The image is built locally and shipped to the box;
-on Apple Silicon always `docker build --platform linux/amd64`.
+Production runs on `francesco`, a shared box whose own compose project
+(`/opt/stack`) defines the `halloween` service, the Caddy site block, and
+the secrets (`HALLOWEEN_*` in `/opt/stack/.env`). This repo ships only the
+image, tagged by git sha and released via the `Makefile`: `make deploy`
+(bundle → amd64 build → `docker save | ssh | docker load` → re-point the
+box's compose tag → restart → verify), `make smoke` for a local run against
+real Postgres, `make rollback TAG=x`. Never resurrect a repo-local
+compose/Caddy/Postgres stack for production - the box already has all
+three (ADR-014).
 
-Full runbook (setup, shipping, backups, rehearsal checklist):
-`docs/deployment.md`.
+Day-to-day loop, the server's shape, and failure modes: `docs/deployment.md`.
 
 ---
 

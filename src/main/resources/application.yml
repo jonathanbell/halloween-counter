@@ -10,7 +10,11 @@ spring:
 
   flyway:
     enabled: true
-    baseline-on-migrate: true
+    # This app only ever migrates a fresh, empty database. baseline-on-migrate
+    # would silently skip V1 when the schema has any pre-existing junk (e.g.
+    # objects inherited from a dirty template1), leaving `events` uncreated;
+    # with it off, Flyway fails loudly on a non-empty schema instead
+    baseline-on-migrate: false
     locations: classpath:db/migration
 
   jackson:
