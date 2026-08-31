@@ -1,6 +1,7 @@
 package com.halloween.candy_counter.security;
 
 import com.halloween.candy_counter.service.TokenService;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -20,7 +21,7 @@ public class AdminTokenFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();
         return !path.startsWith("/api/counter") &&
                !path.startsWith("/api/settings") &&
@@ -28,8 +29,8 @@ public class AdminTokenFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                  FilterChain chain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+                                  @NonNull FilterChain chain) throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
         String providedToken = (authHeader != null && authHeader.startsWith("Bearer "))
             ? authHeader.substring(7)

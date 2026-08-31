@@ -203,6 +203,7 @@ public class GameService {
         }
     }
 
+    @SuppressWarnings("null")
     private void sendScoreUpdate(GameSession sessionState, String result) {
         try {
             sessionState.getSession().sendMessage(new TextMessage(
@@ -249,6 +250,7 @@ public class GameService {
         endGame(session);
     }
 
+    @SuppressWarnings("null")
     private void spawnZombie(GameSession gameSession) {
         // Difficulty cap: skip this tick while enough zombies are alive
         if (gameSession.getZombieSpawns().size() >= gameSession.getDifficulty().maxConcurrent) return;
@@ -269,6 +271,7 @@ public class GameService {
         } catch (Exception ignored) {}
     }
 
+    @SuppressWarnings("null")
     private void resolveMissedZombies(GameSession gameSession) {
         Map<Long, ZombieSpawn> spawns = gameSession.getZombieSpawns();
         long now = System.currentTimeMillis();

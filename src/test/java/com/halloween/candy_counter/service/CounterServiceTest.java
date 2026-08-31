@@ -32,6 +32,7 @@ class CounterServiceTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void incrementSavesIncrementEvent() {
         Event saved = new Event("increment", 2026);
         when(eventRepository.save(any(Event.class))).thenReturn(saved);
@@ -44,6 +45,7 @@ class CounterServiceTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void voteSavesCandyType() {
         Event saved = new Event("vote", 2026, "snickers", null, null);
         when(eventRepository.save(any(Event.class))).thenReturn(saved);

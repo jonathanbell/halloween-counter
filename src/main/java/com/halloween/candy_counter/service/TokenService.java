@@ -31,6 +31,7 @@ public class TokenService {
     /**
      * Resolve the active token: DB override wins, env var is the fallback.
      */
+    @SuppressWarnings("null")
     public String resolveToken(String name) {
         Optional<Token> dbToken = tokenRepository.findById(name);
         if (dbToken.isPresent()) return dbToken.get().getValue();
@@ -38,6 +39,7 @@ public class TokenService {
     }
 
     @Transactional
+    @SuppressWarnings("null")
     public String rotate(String name) {
         String newToken = generateToken();
         Token token = tokenRepository.findById(name)

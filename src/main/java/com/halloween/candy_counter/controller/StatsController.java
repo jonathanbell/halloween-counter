@@ -67,7 +67,7 @@ public class StatsController {
         Map<Instant, Long> minuteCounts = new HashMap<>();
         for (Event event : events) {
             Instant minute = event.getTimestamp().truncatedTo(ChronoUnit.MINUTES);
-            minuteCounts.merge(minute, 1L, Long::sum);
+            minuteCounts.merge(minute, 1L, (a, b) -> a + b);
         }
 
         return minuteCounts.entrySet().stream()

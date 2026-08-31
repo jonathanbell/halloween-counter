@@ -29,6 +29,7 @@ public class SettingsService {
     }
 
     @Transactional
+    @SuppressWarnings("null")
     public Settings updateFullSettings(Integer year, Integer initialCandyCount, Integer countAdjustment) {
         Optional<Settings> existing = settingsRepository.findByYear(year);
         Settings settings = existing.orElse(new Settings(year, initialCandyCount != null ? initialCandyCount : 300));

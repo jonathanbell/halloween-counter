@@ -170,6 +170,7 @@ public class SseBroadcaster {
         sendToSubscribers(payload);
     }
 
+    @SuppressWarnings("null")
     private void sendToSubscribers(Object obj) {
         String payload;
         try {
