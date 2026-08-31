@@ -15,7 +15,7 @@ export const ZombieHorde: React.FC<ZombieHordeProps> = ({ currentCount, candyRem
     // Sync zombies with current count + 1
     setZombies(prev => {
       const newZombies: ZombieInstance[] = [];
-      const targetCount = currentCount;
+      const targetCount = Math.min(currentCount, 50);
       for (let i = 0; i < targetCount; i++) {
         const existingZombie = prev.find(z => z.id === `zombie-${i}`);
 

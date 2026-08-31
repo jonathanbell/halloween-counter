@@ -5,14 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:server": "node server.js",
-    "dev:all": "npm run build && npm run dev:server",
     "build": "tsc -b && vite build",
     "bundle": "npm run build && rm -rf src/main/resources/static && cp -R dist src/main/resources/static",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "node server.js",
-    "start": "npm run build && npm run server",
     "qr": "node scripts/generate-qr.mjs"
   },
   "dependencies": {

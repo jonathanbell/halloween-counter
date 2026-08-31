@@ -17,7 +17,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +30,7 @@ public class SseBroadcaster {
     // Comment frames keep idle connections alive through proxies (Tailscale
     // Funnel and friends kill silent streams); EventSource ignores them
     private static final long HEARTBEAT_INTERVAL_MS = 15_000;
+    private static final int MAX_SUBSCRIBERS = 100;
 
     private final List<SseEmitter> subscribers = new CopyOnWriteArrayList<>();
     private final EventRepository eventRepository;
@@ -37,6 +40,13 @@ public class SseBroadcaster {
     private final ScheduledExecutorService heartbeatExecutor =
         Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "sse-heartbeat");
+            t.setDaemon(true);
+            return t;
+        });
+
+    private final ExecutorService broadcastExecutor =
+        Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r, "sse-broadcast");
             t.setDaemon(true);
             return t;
         });
@@ -52,6 +62,12 @@ public class SseBroadcaster {
     }
 
     public SseEmitter subscribe() {
+        if (subscribers.size() >= MAX_SUBSCRIBERS) {
+            SseEmitter rejected = new SseEmitter(0L);
+            rejected.completeWithError(new RuntimeException("Too many subscribers"));
+            return rejected;
+        }
+
         SseEmitter emitter = new SseEmitter(0L); // no timeout
         subscribers.add(emitter);
 
@@ -163,13 +179,13 @@ public class SseBroadcaster {
         }
 
         for (SseEmitter emitter : subscribers) {
-            try {
-                emitter.send(payload);
-            } catch (Exception ignored) {
-                // Dead subscriber: drop it now so later broadcasts and
-                // heartbeats don't stall on a broken connection
-                subscribers.remove(emitter);
-            }
+            CompletableFuture.runAsync(() -> {
+                try {
+                    emitter.send(payload);
+                } catch (Exception ignored) {
+                    subscribers.remove(emitter);
+                }
+            }, broadcastExecutor);
         }
     }
 
@@ -186,6 +202,7 @@ public class SseBroadcaster {
     @PreDestroy
     public void cleanup() {
         heartbeatExecutor.shutdownNow();
+        broadcastExecutor.shutdownNow();
         for (SseEmitter e : subscribers) {
             try { e.complete(); } catch (Exception ignored) {}
         }

@@ -1,8 +1,8 @@
 # Halloween 2026 Candy Counter — Product Requirements Document
 
-**Date:** 2025-12-01 (for deployment Aug 2026)  
-**Author:** Jonathan Bell  
-**Stakeholders:** Jonathan Bell (garage host, coder), Trick-or-treaters, neighbors, 2026 Halloween audience  
+**Date:** 2025-12-01 (for deployment Aug 2026)
+**Author:** Jonathan Bell
+**Stakeholders:** Jonathan Bell (garage host, coder), Trick-or-treaters, neighbors, 2026 Halloween audience
 **Target:** Halloween night 2026, projected to garage door, publicly accessible via QR code
 
 ---
@@ -10,6 +10,7 @@
 ## 1. Vision & Goals
 
 `High-visibility live candy counter` on the garage door with:
+
 - **Live count** of candies handed out (min-max progress bar, count, basic stats)
 - **User-scannable QR codes** for viewer/admin interfaces
 - **Authenticated admin interface** for candy count recovery (toggle + override)
@@ -21,6 +22,7 @@
 - **Multi-year data** — schema separates year in events table, supports future years
 
 **2026 Goals:**
+
 - Deployable Spring Boot server in Docker image
 - Database: managed remote Postgres (Flyway auto-migrations)
 - Garage computer hosts app via Tailscale (WireGuard between garage → server)
@@ -28,14 +30,6 @@
 ---
 
 ## 2. System Architecture
-
-> **Superseded (2026-08-30/31):** the Tailscale topology below (and the
-> Tailscale/managed-Postgres items in sections 1 and 8) was replaced by
-> deployment to a shared cloud server (`francesco`) behind
-> `halloween-counter.jonathanbell.ca` - the box's existing Caddy and host
-> PostgreSQL serve the app. See ADR-013/ADR-014 in
-> `docs/design-decisions.md` and the runbook in `docs/deployment.md`.
-> The rest of this PRD (features, game, data model) still stands.
 
 **Topology:**
 
@@ -49,10 +43,10 @@
       [Remote Managed Postgres]
 ```
 
-**Server:** Spring Boot running in Docker image on your personal server  
-**DB:** Cloud-hosted Postgres (e.g., AWS RDS, Neon, Supabase)  
-**Internal routing:** Garage machine → Server via Tailscale WireGuard  
-**Phone routing:** Public → Tailscale Funnel URL  
+**Server:** Spring Boot running in Docker image on your personal server
+**DB:** Cloud-hosted Postgres (e.g., AWS RDS, Neon, Supabase)
+**Internal routing:** Garage machine → Server via Tailscale WireGuard
+**Phone routing:** Public → Tailscale Funnel URL
 
 ---
 
@@ -60,15 +54,15 @@
 
 ### `events` table
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | `BIGINT` PK | event ID |
-| `year` | `INTEGER` | explicitly split per year (e.g., 2025) |
-| `timestamp` | `TIMESTAMP WITH TIME ZONE` | event time (UTC) |
-| `type` | `VARCHAR(20)` NOT NULL | `increment`, `effect_lightning`, `effect_candy_rain`, `vote` |
-| `candy_type` | `VARCHAR(50)` NULL | e.g., `snickers`, `m&ms`, `twix` (used for vote events) |
-| `game_session_id` | `UUID` NULL | links game events to session |
-| `score` | `INTEGER` NULL | game score value for game events |
+| Column            | Type                       | Description                                                  |
+| ----------------- | -------------------------- | ------------------------------------------------------------ |
+| `id`              | `BIGINT` PK                | event ID                                                     |
+| `year`            | `INTEGER`                  | explicitly split per year (e.g., 2025)                       |
+| `timestamp`       | `TIMESTAMP WITH TIME ZONE` | event time (UTC)                                             |
+| `type`            | `VARCHAR(20)` NOT NULL     | `increment`, `effect_lightning`, `effect_candy_rain`, `vote` |
+| `candy_type`      | `VARCHAR(50)` NULL         | e.g., `snickers`, `m&ms`, `twix` (used for vote events)      |
+| `game_session_id` | `UUID` NULL                | links game events to session                                 |
+| `score`           | `INTEGER` NULL             | game score value for game events                             |
 
 ### `statistics` (optional inferred views)
 
@@ -89,48 +83,51 @@ All endpoints support both SSE (for viewer projection) and WebSocket (for game) 
 
 ### Core: Increment + Update
 
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/api/counter` | POST | ✅ token | `{type: "increment"}`, increments current count by 1 |
-| `/api/counter/state` | GET | ✅ token | returns current count, initial candy total, mode (idle \| game), signed in |
-| `/api/state` | GET | ✅ token | aggregates state: total count + status |
-| `/api/stats` | GET | ✅ token | returns aggregated statistics by year |
-| `/api/events` | POST | ✅ token | fire `lightning` or `candy_rain` (debounced server-side) |
-| `/api/vote` | POST | ❌ none | cast vote for candy type: `{type: "vote", candy_type: "snickers"}` |
+| Endpoint             | Method | Auth     | Description                                                                |
+| -------------------- | ------ | -------- | -------------------------------------------------------------------------- |
+| `/api/counter`       | POST   | ✅ token | `{type: "increment"}`, increments current count by 1                       |
+| `/api/counter/state` | GET    | ✅ token | returns current count, initial candy total, mode (idle \| game), signed in |
+| `/api/state`         | GET    | ✅ token | aggregates state: total count + status                                     |
+| `/api/stats`         | GET    | ✅ token | returns aggregated statistics by year                                      |
+| `/api/events`        | POST   | ✅ token | fire `lightning` or `candy_rain` (debounced server-side)                   |
+| `/api/vote`          | POST   | ❌ none  | cast vote for candy type: `{type: "vote", candy_type: "snickers"}`         |
 
-*Token-based authentication: passed as `?token=hex-string` or `Authorization: Bearer <token>`. The burner value is publicly visible at the admin endpoint (published via QR code).*
+_Token-based authentication: passed as `?token=hex-string` or `Authorization: Bearer <token>`. The burner value is publicly visible at the admin endpoint (published via QR code)._
 
 ### Effects (controlling projection visuals)
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/effects/lightning` | POST | trigger lightning effect |
-| `/api/effects/candy-rain` | POST | trigger candy rain |
+| Endpoint                  | Method | Description              |
+| ------------------------- | ------ | ------------------------ |
+| `/api/effects/lightning`  | POST   | trigger lightning effect |
+| `/api/effects/candy-rain` | POST   | trigger candy rain       |
 
 Debounce: effects can't fire again until animation completes (approx 5-10s cooldown).
 
 ### WebSocket: Game Control
 
-| Event | Direction | Payload |
-|--------|---------|---------|
-| `game_start` | Client → Server | `{type: "game_start", difficulty: "easy"}` |
-| `game_start_denied` | Server → Client | `{type: "game_start_denied", reason: "already_active"}` |
-| `game_lightning` | Client → Server | `{type: "zombie_hit", lightning: true}` |
-| `game_state` | Client → Server | `{type: "game_action", action: "pressed", zombie_id: "` uuid"} |
-| `game_score` | Client → Server | `{type: "game_action", action: "scored", score: 42}` |
-| `game_ended` | Client → Server | `{type: "game_ended", score: 42}` |
+| Event                | Direction       | Payload                                                                |
+| -------------------- | --------------- | ---------------------------------------------------------------------- |
+| `game_start`         | Client → Server | `{type: "game_start", difficulty: "easy"}`                             |
+| `game_started`       | Server → Client | `{type: "game_started", sessionId: "<uuid>"}`                          |
+| `game_start_denied`  | Server → Client | `{type: "game_start_denied", reason: "already_active"}`                |
+| `zombie_hit`         | Client → Server | `{type: "zombie_hit", zombieId: "123"}`                                |
+| `zombie_spawned`     | Server → Client | `{type: "zombie_spawned", zombieId: "123", direction: 0}`              |
+| `zombie_missed`      | Server → Client | `{type: "zombie_missed", zombieId: "123"}`                             |
+| `score_update`       | Server → Client | `{type: "score_update", result: "hit", score: 3}`                      |
+| `game_end`           | Client → Server | `{type: "game_end"}`                                                   |
+| `game_ended`         | Server → Client | `{type: "game_ended", score: 7}`                                       |
 
-Once started, server spawns `{"game_active": "true"}` on SSE. Client->server sends game logic; server validates game session active and server accepts the event. Server broadcasts final score back via WS.
+See `docs/api.md` WebSocket section for the full authoritative protocol including difficulty levels and auto-end behaviour.
 
 ### Page Routing (Server serves static bundle)
 
-| Route | Public | Description |
-|--------|-------|-------------|
-| `/` | ✅ Public | Live counter + zombies + lightning + candy rain |
-| `/remote` | ✔ Admin | Big increment button (Easy Press) |
-| `/settings` | ✔ Admin | Override total count / initial candy |
-| `/stats` | ✅ Public | View charts + vote + game score |
-| `/game` | ✅ Public | Whack-a-zombie game (WebSocket drive) |
+| Route       | Public    | Description                                     |
+| ----------- | --------- | ----------------------------------------------- |
+| `/`         | ✅ Public | Live counter + zombies + lightning + candy rain |
+| `/remote`   | ✔ Admin   | Big increment button (Easy Press)               |
+| `/settings` | ✔ Admin   | Override total count / initial candy            |
+| `/stats`    | ✅ Public | View charts + vote + game score                 |
+| `/game`     | ✅ Public | Whack-a-zombie game (WebSocket drive)           |
 
 Server also serves `/qr.png` (pre-baked QR codes), and `/ws` endpoint for game WebSocket connection.
 
@@ -149,6 +146,7 @@ Server also serves `/qr.png` (pre-baked QR codes), and `/ws` endpoint for game W
 ### Stats Routes (`/stats`)
 
 Phone view shows:
+
 - **Total candies given**
 - **Rate chart** (Recharts histogram: minute-by-minute flow)
 - **Vote for candy** (buttons: Snickers, M&M's, Twix)
@@ -162,6 +160,7 @@ Plain HTML page with a single big tap-controlled button. Bypasses iframe/viewpor
 ### Admin Settings (`/settings`)
 
 Allows:
+
 - Override total count
 - Reset initial candy count
 - Refresh tokens printed as QR codes
@@ -170,13 +169,15 @@ Allows:
 ### Game (`/game`)
 
 Whack-a-zombie:
+
 - **Phone**: shows "Waiting for game," countdown, final score
 - **Projection**: zombies spawn one-at-a-time (max 3) on left/right edges and stomp toward center. Each zombie takes ~2-3 seconds before reaching the candy bar.
 - **Phone taps right/left**: fires WebSocket `{type: "game_action", zombie_id: "some_UUID"}`
 - **Scoring**: +1 for hit, -1 for missed zombie reaching candy
 - **Ends**: after ~30 seconds; phone shows final score + optional "Share" preview (canvas-generated PNG)
 
-Game stages: 
+Game stages:
+
 1. Phone connects WS → screen sends "Waiting for player"
 2. Phone tests message "start"
 3. Server validates no other active game → "Game starting"
@@ -243,6 +244,7 @@ Effect does NOT affect data or statistics (projection only).
 ### State management
 
 Server state:
+
 - **Connection limit: SSR 100 concurrent connections** (randomly generous for game)
 - **Session store: none** (game sessions ephemeral)
 - **Memory: < 512 MB** hard cap possible (demo purposes, delete old logs, exchange rate server if it will fight each other).
@@ -258,6 +260,7 @@ Server state:
 ## 9. Admin Token Management
 
 **Two tokens** — **admin token**, **settings token**:
+
 - Admin URL: `/remote?token=abcdef...`
 - Settings URL: `/settings?token=xyz...`
 - QR codes pre-built inside Docker bundle

@@ -3,6 +3,12 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
+const CANDY_OPTIONS = [
+  { id: 'snickers', label: 'Snickers', emoji: '🍫' },
+  { id: 'm&ms', label: "M&M's", emoji: '🟤' },
+  { id: 'twix', label: 'Twix', emoji: '🍪' },
+];
+
 interface HistogramPoint {
   minute: string;
   count: number;
@@ -22,6 +28,10 @@ export const StatsPage = () => {
   const [current, setCurrent] = useState<StatsData | null>(null);
   const [lastYear, setLastYear] = useState<StatsData | null>(null);
   const [showLastYear, setShowLastYear] = useState(false);
+  const [voted, setVoted] = useState<string | null>(
+    () => localStorage.getItem('halloweenVote2026') || null
+  );
+  const [badgeCopied, setBadgeCopied] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -37,6 +47,34 @@ export const StatsPage = () => {
       setLastYear(last);
     }).catch(err => console.error('stats fetch failed:', err));
   }, []);
+
+  const vote = async (candyType: string) => {
+    try {
+      await fetch('/api/vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: 2026, candyType }),
+      });
+      setVoted(candyType);
+      localStorage.setItem('halloweenVote2026', candyType);
+
+      const refresh = await fetch(`/api/stats?year=${YEAR_NOW}`).then(r => r.json());
+      setCurrent(refresh);
+    } catch (err) {
+      console.error('Vote failed:', err);
+    }
+  };
+
+  const copyBadgeLink = async () => {
+    const url = `${window.location.origin}/stats`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setBadgeCopied(true);
+      setTimeout(() => setBadgeCopied(false), 2000);
+    } catch {
+      // Fallback
+    }
+  };
 
   const active = showLastYear ? lastYear : current;
 
@@ -92,6 +130,21 @@ export const StatsPage = () => {
           }}>
             <div style={{ fontSize: '14px', color: '#aaa' }}>TOTAL CANDIES</div>
             <div style={{ fontSize: '56px', fontWeight: 'bold' }}>{active.total}</div>
+            <button
+              onClick={copyBadgeLink}
+              style={{
+                marginTop: '12px',
+                padding: '8px 16px',
+                background: badgeCopied ? '#27ae60' : '#e67e22',
+                border: 'none',
+                borderRadius: '6px',
+                color: '#fff',
+                fontSize: '14px',
+                cursor: 'pointer',
+              }}
+            >
+              {badgeCopied ? 'Copied!' : '📋 Share Badge'}
+            </button>
           </div>
 
           {active.histogram.length > 0 ? (
@@ -156,6 +209,35 @@ export const StatsPage = () => {
               <div style={{ color: '#888' }}>No votes yet</div>
             )}
           </div>
+        </div>
+      )}
+
+      {!showLastYear && (
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
+          padding: '16px', marginTop: '12px', flexWrap: 'wrap',
+        }}>
+          <span style={{ color: '#aaa', fontSize: '14px' }}>Vote for favorite candy:</span>
+          {CANDY_OPTIONS.map(option => (
+            <button
+              key={option.id}
+              onClick={() => vote(option.id)}
+              disabled={!!voted}
+              style={{
+                padding: '8px 14px',
+                background: voted === option.id ? '#9b59b6' : 'rgba(255,255,255,0.15)',
+                border: 'none',
+                borderRadius: '6px',
+                color: '#fff',
+                fontSize: '13px',
+                cursor: voted ? 'default' : 'pointer',
+                opacity: voted ? 1 : 0.9,
+              }}
+            >
+              {option.emoji} {option.label}
+            </button>
+          ))}
+          {voted && <span style={{ color: '#9b59b6', fontSize: '12px' }}>Vote recorded!</span>}
         </div>
       )}
 

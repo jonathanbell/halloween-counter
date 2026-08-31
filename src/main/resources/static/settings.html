@@ -143,6 +143,31 @@
       .container { padding: 30px 20px; }
       h1 { font-size: 24px; }
     }
+
+    .badge-section {
+      background: rgba(255, 152, 0, 0.1);
+      border: 1px solid rgba(230, 126, 34, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 24px;
+      text-align: center;
+    }
+
+    .badge-section h3 {
+      color: #e67e22;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    .badge-card {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      border: 2px solid #e67e22;
+      border-radius: 12px;
+      padding: 24px;
+      display: inline-block;
+      min-width: 240px;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -193,6 +218,19 @@
       </div>
     </form>
 
+    <div class="badge-section" id="badgeSection" style="display:none;">
+      <h3>🏆 Admin Badge</h3>
+      <div class="badge-card" id="badgeCard">
+        <div style="font-size:42px;margin-bottom:4px;">🎃</div>
+        <div style="font-size:14px;color:#999;">CANDIES GIVEN OUT ON HALLOWEEN</div>
+        <div style="font-size:48px;font-weight:bold;margin:8px 0;" id="badgeCount">0</div>
+        <div style="font-size:13px;color:#aaa;">halloween-counter.jonathanbell.ca</div>
+      </div>
+      <div class="button-group" style="margin-top:12px;">
+        <button class="btn-primary" id="copyBadgeBtn">📋 Copy Badge Link</button>
+      </div>
+    </div>
+
     <div id="message" class="message"></div>
   </div>
 
@@ -217,6 +255,10 @@
         document.getElementById('candyRemainingDisplay').textContent = state.candyRemaining;
 
         document.getElementById('initialCandyCount').value = state.initialCandyCount;
+
+        // Populate badge section
+        document.getElementById('badgeCount').textContent = state.currentTotal;
+        document.getElementById('badgeSection').style.display = 'block';
       } catch (error) {
         console.error('Error loading settings:', error);
         document.getElementById('currentCountDisplay').textContent = 'Error';
@@ -258,6 +300,7 @@
           document.getElementById('initialCandyDisplay').textContent = state.initialCandyCount;
           document.getElementById('candyRemainingDisplay').textContent = state.candyRemaining;
           document.getElementById('currentTotal').value = '';
+          document.getElementById('badgeCount').textContent = state.currentTotal;
 
           setTimeout(() => {
             messageEl.className = 'message';
@@ -275,6 +318,22 @@
           messageEl.className = 'message';
           messageEl.textContent = '';
         }, 5000);
+      }
+    });
+
+    document.getElementById('copyBadgeBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(window.location.origin + '/stats');
+        const btn = document.getElementById('copyBadgeBtn');
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#27ae60';
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.style.background = '';
+        }, 2000);
+      } catch {
+        // ignore
       }
     });
   </script>

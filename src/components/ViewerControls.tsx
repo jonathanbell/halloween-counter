@@ -7,7 +7,9 @@ const CANDY_OPTIONS = [
 ];
 
 export const ViewerControls = () => {
-  const [voted, setVoted] = useState<string | null>(null);
+  const [voted, setVoted] = useState<string | null>(
+    () => localStorage.getItem('halloweenVote2026') || null
+  );
 
   const fireEffect = async (effect: 'lightning' | 'candy-rain') => {
     try {
@@ -25,6 +27,7 @@ export const ViewerControls = () => {
         body: JSON.stringify({ year: 2026, candyType }),
       });
       setVoted(candyType);
+      localStorage.setItem('halloweenVote2026', candyType);
     } catch (err) {
       console.error('Vote failed:', err);
     }
