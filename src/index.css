@@ -1,7 +1,9 @@
-/* Digital-7 font removed - using monospace fallback */
+/* Global reset only. Tokens live in public/theme.css and shared component
+   rules in public/primitives.css, both linked from index.html so the static
+   admin pages can use the same two files. */
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
 
@@ -18,15 +20,15 @@
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: #1a1a1a; /* Dark fallback color */
+  background: var(--color-bg);
 }
 
+/* Only the projection page locks the viewport; every other route scrolls. */
 #root {
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
+  width: 100%;
+  min-height: 100dvh;
+}
+
+body:has(.app.projection) {
+  overflow: hidden;
 }

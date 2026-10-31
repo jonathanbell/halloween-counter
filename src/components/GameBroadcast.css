@@ -1,0 +1,248 @@
+/* Graveyard Bonk on the garage door. Only ever rendered under
+   .app.projection, so viewport units are safe here and every rule is
+   scoped to say so. Sized to be read from across a driveway. */
+
+.app.projection .game-broadcast {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scene-sky);
+}
+
+.app.projection .game-broadcast canvas {
+  display: block;
+}
+
+/* Scene labels: the shared .bonk-label, scaled for the door */
+.app.projection .game-broadcast .bonk-label { font-size: 4vh; }
+.app.projection .game-broadcast .bonk-label span:first-child { font-size: 7vh; }
+
+/* HUD ------------------------------------------------------------------ */
+
+.app.projection .broadcast-hud {
+  position: absolute;
+  top: 3vh;
+  left: 4vw;
+  right: 4vw;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  pointer-events: none;
+  text-shadow: 0 0.4vh 1vh #000;
+}
+
+.app.projection .hud-player,
+.app.projection .hud-time {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5vh;
+}
+
+.app.projection .hud-time { align-items: flex-end; }
+
+.app.projection .hud-label {
+  font-size: 2.6vh;
+  font-weight: 700;
+  letter-spacing: 0.3vh;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.app.projection .hud-name,
+.app.projection .hud-clock {
+  font-family: var(--font-display);
+  font-size: 9vh;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.app.projection .broadcast-hud .hud-score {
+  font-size: 14vh;
+}
+
+/* Shouts, banners, captions -------------------------------------------- */
+
+.app.projection .broadcast-shout {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 13vh;
+  color: var(--color-gold);
+  text-shadow: 0 0 4vh var(--color-accent-glow), 0 1vh 0 #000;
+  pointer-events: none;
+  animation: shout-pulse 1s ease-in-out infinite alternate;
+}
+
+.app.projection .broadcast-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 22vh;
+  transform: translateX(-50%);
+  padding: 2vh 5vh;
+  border-radius: 2vh;
+  background: var(--color-danger);
+  font-family: var(--font-display);
+  font-size: 8vh;
+  white-space: nowrap;
+  color: var(--color-text);
+  box-shadow: var(--shadow-card);
+  pointer-events: none;
+  animation: banner-wobble 0.5s ease-out;
+}
+
+.app.projection .broadcast-caption {
+  position: absolute;
+  top: 5vh;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1.5vh 4vh;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.55);
+  font-family: var(--font-display);
+  font-size: 7vh;
+  white-space: nowrap;
+  color: var(--color-gold);
+  pointer-events: none;
+}
+
+/* Results and Hall of Fame cards --------------------------------------- */
+
+.app.projection .broadcast-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 60vh;
+  padding: 4vh 7vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5vh;
+  border: 0.3vh solid var(--color-border);
+  border-radius: 3vh;
+  background: rgba(10, 10, 20, 0.82);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.app.projection .card-name {
+  font-family: var(--font-display);
+  font-size: 14vh;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.app.projection .card-title {
+  font-family: var(--font-display);
+  font-size: 7vh;
+  color: var(--color-accent);
+  text-shadow: var(--glow-accent);
+}
+
+.app.projection .card-score {
+  font-size: 22vh;
+}
+
+.app.projection .card-facts {
+  display: flex;
+  gap: 5vh;
+  font-size: 4vh;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.app.projection .top-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1vh;
+}
+
+.app.projection .top-list li {
+  color: var(--color-text);
+  display: grid;
+  grid-template-columns: 10vh 1fr auto;
+  align-items: center;
+  gap: 3vh;
+  padding: 1vh 3vh;
+  border-radius: 1.5vh;
+  font-size: 6vh;
+}
+
+.app.projection .top-list li.you {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.app.projection .top-list li.you .top-score { color: var(--color-bg); text-shadow: none; }
+
+.app.projection .top-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5vh;
+  min-width: 60vh;
+}
+
+.app.projection .top-rank { color: var(--color-text-dim); font-weight: 700; }
+.app.projection .top-list li.you .top-rank { color: var(--color-bg); }
+.app.projection .top-name { font-family: var(--font-display); text-align: left; }
+.app.projection .top-score { font-size: 7vh; }
+
+/* Corner counter: the real Counter, shrunk. Increments keep their glitch */
+
+.app.projection .broadcast-counter {
+  position: absolute;
+  right: 3vw;
+  bottom: 3vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1vh;
+  padding: 1.5vh 2vh;
+  border-radius: 2vh;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* Same face and ink as the idle door's counter heading */
+.app.projection .broadcast-counter-caption {
+  font-family: var(--font-display);
+  font-size: 3.2vh;
+  font-weight: 400;
+  letter-spacing: 0.2vh;
+  color: var(--color-text);
+  text-shadow: 2px 2px 0 #000;
+}
+
+.app.projection .broadcast-counter .counter-container { margin: 0; }
+.app.projection .broadcast-counter .counter-label { display: none; }
+.app.projection .broadcast-counter .counter-display { gap: 0.8vh; }
+
+.app.projection .broadcast-counter .digit-container {
+  width: 6vh;
+  height: 8vh;
+  border-radius: 0.6vh;
+}
+
+.app.projection .broadcast-counter .digit {
+  font-size: 8.4vh;
+  line-height: 8vh;
+  --split: 0.25vh;
+  text-shadow: var(--glow-gold), 0 0 24px var(--color-accent-glow);
+}
+
+@keyframes shout-pulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
+}
+
+@keyframes banner-wobble {
+  0% { transform: translateX(-50%) scale(0.4) rotate(-6deg); }
+  60% { transform: translateX(-50%) scale(1.1) rotate(2deg); }
+  100% { transform: translateX(-50%) scale(1) rotate(0); }
+}

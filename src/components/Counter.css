@@ -1,24 +1,40 @@
+/* Phone-first. Every viewport-unit rule is scoped to .projection so the
+   garage door renders exactly as it always has. */
+
 .counter-container {
   text-align: center;
   position: relative;
   z-index: 10;
+  width: 100%;
+}
+
+.app.projection .counter-container {
   margin: 1vh 0 2vh 0;
 }
 
 .counter-label {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.4rem, 6.5vw, 2rem);
+  line-height: 1.15;
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+  position: relative;
+  transition: opacity 0.5s ease;
+  text-shadow:
+    2px 2px 0 #000,
+    0 0 24px rgba(245, 240, 230, 0.5);
+}
+
+.app.projection .counter-label {
   font-size: 13vh;
-  color: #f5f0e6;
+  margin-bottom: 2vh;
   text-shadow:
     3px 3px 0px #000,
     -1px -1px 0px #000,
     1px -1px 0px #000,
     -1px 1px 0px #000,
     0 0 30px rgba(245, 240, 230, 0.8);
-  font-weight: bold;
-  margin-bottom: 2vh;
-  font-family: 'Creepster', cursive;
-  position: relative;
-  transition: opacity 0.5s ease;
 }
 
 .counter-label.out-of-candy {
@@ -31,87 +47,251 @@
   left: 0;
   right: 0;
   top: 50%;
-  height: 0.5vh;
-  background: #ff0000;
+  height: 3px;
+  background: var(--color-alarm);
   box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
   animation: strikethrough-grow 0.5s ease-out forwards;
 }
 
+.app.projection .counter-label.out-of-candy::after {
+  height: 0.5vh;
+}
+
 @keyframes strikethrough-grow {
-  from {
-    width: 0;
-    left: 50%;
-    right: 50%;
-  }
-  to {
-    width: 100%;
-    left: 0;
-    right: 0;
-  }
+  from { width: 0; left: 50%; right: 50%; }
+  to { width: 100%; left: 0; right: 0; }
 }
 
 .counter-display {
   display: flex;
   justify-content: center;
+  gap: var(--space-2);
+
+  /* Base clock for the glitch. Every well takes the hit together, then
+     scales these by its own --*-scale (rolled per increment in Counter.tsx)
+     so no two screens recover alike. The worst case - --glitch-surge at its
+     top multiplier plus the largest --glitch-jitter - must stay under
+     ANIMATION_MS in src/hooks/useCounter.ts, which is what strips
+     .glitching. */
+  --glitch-blank: 40ms;
+  --glitch-split: 150ms;
+  --glitch-scan: 220ms;
+  --glitch-surge: 420ms;
+
+  /* Signal artifacts, not UI: the channel split is the one place a raw red
+     and cyan are the point, so they stay out of the token sheet. */
+  --split-red: #ff2d2d;
+  --split-cyan: #2dffff;
+}
+
+.app.projection .counter-display {
   gap: 2vh;
 }
 
 .digit-container {
-  background: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
-  border: 3px solid #ff6b35;
-  border-radius: 1vh;
-  width: 15vh;
-  height: 20vh;
+  background: linear-gradient(180deg, var(--color-panel) 0%, var(--color-panel-hi) 50%, var(--color-panel) 100%);
+  border: 3px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  width: clamp(64px, 21vw, 96px);
+  height: clamp(88px, 28vw, 128px);
   position: relative;
   overflow: hidden;
   box-shadow:
-    0 0 20px rgba(255, 107, 53, 0.5),
+    0 0 20px var(--color-accent-glow),
     inset 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
+.app.projection .digit-container {
+  border-radius: 1vh;
+  width: 15vh;
+  height: 20vh;
+}
+
 .digit {
-  font-size: 18vh;
-  line-height: 20vh;
-  color: #ffd700;
+  font-family: var(--font-counter);
+  font-size: clamp(72px, 24vw, 110px);
+  line-height: clamp(88px, 28vw, 128px);
+  color: var(--color-gold);
+  font-variant-numeric: tabular-nums;
+  position: relative;
+  /* Horizontal channel offset, scaled with the glyph: a 3px split is
+     invisible against an 18vh projector digit. --split-x folds in this
+     well's own magnitude and which channel leads. */
+  --split: 3px;
+  --split-x: calc(var(--split) * var(--split-scale, 1) * var(--split-dir, 1));
   text-shadow:
     0 0 10px rgba(255, 215, 0, 0.8),
-    0 0 20px rgba(255, 107, 53, 0.5);
-  font-weight: bold;
-  font-family: 'Digital-7', monospace;
-  transition: transform 0.6s;
-  transform-style: preserve-3d;
+    0 0 20px var(--color-accent-glow);
 }
 
-.digit.flip {
-  animation: flipAnimation 0.6s ease-in-out;
+/* Projector only: a four-layer bloom sized to carry across a dark driveway.
+   A tight shadow just makes the digit look thicker; the wide orange halos
+   are what actually read from the street. */
+.app.projection .digit {
+  font-family: var(--font-display);
+  font-size: 21vh;
+  line-height: 20vh;
+  --split: 0.5vh;
+  text-shadow:
+    0 0 14px rgba(255, 215, 0, 0.95),
+    0 0 31px rgba(255, 215, 0, 0.48),
+    0 0 67px rgba(255, 107, 53, 0.39),
+    0 0 134px rgba(255, 107, 53, 0.25);
 }
 
-@keyframes flipAnimation {
+/* Everything after the black frame starts when that well's own black frame
+   ends, not when the display's does. */
+.digit-container {
+  --glitch-recover: calc(
+    var(--glitch-jitter, 0ms) + var(--glitch-blank) * var(--blank-scale, 1)
+  );
+}
+
+.digit-container.glitching {
+  animation: crt-surge calc(var(--glitch-surge) * var(--surge-scale, 1))
+    ease-out var(--glitch-jitter, 0ms) forwards;
+}
+
+/* The red/cyan copies ride as pseudo elements rather than as animated
+   text-shadow: the digit already carries a two-layer glow on phones and a
+   four-layer bloom on the projector, and keyframes would have to restate
+   both stacks in full. */
+.digit::before,
+.digit::after {
+  content: attr(data-digit);
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  mix-blend-mode: screen;
+  text-shadow: none;
+  pointer-events: none;
+}
+
+.digit::before {
+  color: var(--split-red);
+}
+
+.digit::after {
+  color: var(--split-cyan);
+}
+
+.glitching .digit {
+  animation: crt-blank calc(var(--glitch-blank) * var(--blank-scale, 1))
+    steps(1, end) var(--glitch-jitter, 0ms) forwards;
+}
+
+.glitching .digit::before {
+  animation: crt-split-red var(--glitch-split) steps(1, end)
+    var(--glitch-recover) forwards;
+}
+
+.glitching .digit::after {
+  animation: crt-split-cyan var(--glitch-split) steps(1, end)
+    var(--glitch-recover) forwards;
+}
+
+/* Refresh band sweeping the well. The container already clips. */
+.digit-container::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 35%;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 215, 0, 0.12) 45%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 215, 0, 0.12) 55%,
+    transparent 100%
+  );
+}
+
+.digit-container.glitching::after {
+  animation: crt-scan calc(var(--glitch-scan) * var(--scan-scale, 1))
+    steps(6, end) var(--glitch-recover) forwards;
+}
+
+/* A supply sag under the whole readout, on top of the per-well surge. */
+.counter-display.animating {
+  animation: crt-sag 120ms steps(2, end);
+}
+
+/* One black frame, then the new value is simply there. */
+@keyframes crt-blank {
+  0% { opacity: 0; }
+  50% { opacity: 0.35; }
+  100% { opacity: 1; }
+}
+
+@keyframes crt-split-red {
+  0% { opacity: 0.85; transform: translate(calc(var(--split-x) * -1), -1px); }
+  33% { opacity: 0.7; transform: translate(var(--split-x), 1px); }
+  66% { opacity: 0.4; transform: translate(calc(var(--split-x) * -0.4), 0); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+
+@keyframes crt-split-cyan {
+  0% { opacity: 0.85; transform: translate(var(--split-x), 1px); }
+  33% { opacity: 0.7; transform: translate(calc(var(--split-x) * -1), -1px); }
+  66% { opacity: 0.4; transform: translate(calc(var(--split-x) * 0.4), 0); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+
+@keyframes crt-scan {
+  0% { opacity: 0.9; transform: translateY(-100%); }
+  100% { opacity: 0.2; transform: translateY(300%); }
+}
+
+/* Asymmetric on purpose: current spikes on the first frame and bleeds off.
+   The old symmetric ease-in-out pulse is what read as analog. */
+@keyframes crt-surge {
   0% {
-    transform: perspective(400px) rotateX(0deg);
+    box-shadow:
+      0 0 44px rgba(255, 107, 53, 1),
+      0 0 70px rgba(255, 215, 0, 0.6),
+      inset 0 0 24px rgba(255, 107, 53, 0.45);
   }
-  50% {
-    transform: perspective(400px) rotateX(-90deg);
+  12% {
+    box-shadow:
+      0 0 14px rgba(255, 107, 53, 0.35),
+      inset 0 0 20px rgba(0, 0, 0, 0.7);
+  }
+  22% {
+    box-shadow:
+      0 0 34px rgba(255, 107, 53, 0.85),
+      0 0 52px rgba(255, 215, 0, 0.4),
+      inset 0 0 20px rgba(255, 107, 53, 0.25);
   }
   100% {
-    transform: perspective(400px) rotateX(0deg);
-  }
-}
-
-.counter-display.animating .digit-container {
-  animation: glow 0.6s ease-in-out;
-}
-
-@keyframes glow {
-  0%, 100% {
     box-shadow:
-      0 0 20px rgba(255, 107, 53, 0.5),
+      0 0 20px var(--color-accent-glow),
       inset 0 0 20px rgba(0, 0, 0, 0.5);
   }
-  50% {
-    box-shadow:
-      0 0 40px rgba(255, 107, 53, 1),
-      0 0 60px rgba(255, 215, 0, 0.5),
-      inset 0 0 20px rgba(255, 107, 53, 0.3);
+}
+
+@keyframes crt-sag {
+  0% { filter: brightness(1.35); }
+  50% { filter: brightness(0.8); }
+  100% { filter: brightness(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .counter-display.animating,
+  .digit-container.glitching,
+  .glitching .digit,
+  .glitching .digit::before,
+  .glitching .digit::after,
+  .digit-container.glitching::after {
+    animation: none;
+  }
+
+  .digit::before,
+  .digit::after,
+  .digit-container::after {
+    opacity: 0;
   }
 }

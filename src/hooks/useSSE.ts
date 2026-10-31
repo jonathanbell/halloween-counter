@@ -1,98 +1,163 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import type { GameFeedMessage } from '../game/protocol';
 
-interface SSEState {
-  currentCount: number;
-  candyRemaining: number;
-  initialCandyCount: number;
-}
+export type SSEMessage =
+  | { type: 'increment' | 'effect_lightning' | 'effect_candy_rain' | 'vote'; year: number; total: number; initialCandyCount?: number; timestamp: string }
+  | GameFeedMessage;
 
 interface UseSSEReturn {
-  state: SSEState | null;
+  lastMessage: SSEMessage | null;
+  isConnected: boolean;
+  error: string | null;
+  reconnectAttempts: number;
+  registerListener: (cb: (msg: SSEMessage) => void) => () => void;
+}
+
+interface ConnectionStatus {
   isConnected: boolean;
   error: string | null;
   reconnectAttempts: number;
 }
 
-export const useSSE = (url: string): UseSSEReturn => {
-  const [state, setState] = useState<SSEState | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<number | null>(null);
-  
-  const connect = useCallback(() => {
-    // Clean up any existing connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
+// One EventSource per URL, shared by every hook instance on the page.
+// Multiple components subscribe to /api/events (counter, game feed,
+// effects), and each opening its own connection multiplies server load
+interface SharedConnection {
+  url: string;
+  es: EventSource | null;
+  listeners: Set<(msg: SSEMessage) => void>;
+  statusListeners: Set<() => void>;
+  status: ConnectionStatus;
+  reconnectTimer: number | null;
+  closeTimer: number | null;
+  refCount: number;
+}
+
+const connections = new Map<string, SharedConnection>();
+
+function notifyStatus(conn: SharedConnection) {
+  conn.statusListeners.forEach(cb => cb());
+}
+
+function connect(conn: SharedConnection) {
+  conn.es?.close();
+
+  const eventSource = new EventSource(conn.url);
+  conn.es = eventSource;
+
+  eventSource.onopen = () => {
+    console.log('[SSE] Connection established');
+    conn.status = { isConnected: true, error: null, reconnectAttempts: 0 };
+    notifyStatus(conn);
+  };
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data) as SSEMessage;
+      conn.listeners.forEach(cb => cb(data));
+    } catch (err) {
+      console.error('[SSE] Parse error:', err);
+      conn.status = { ...conn.status, error: 'Failed to parse server message' };
+      notifyStatus(conn);
     }
-    
-    console.log(`[SSE] Connecting to ${url}...`);
-    const eventSource = new EventSource(url);
-    eventSourceRef.current = eventSource;
-    
-    eventSource.onopen = () => {
-      console.log('[SSE] Connection established');
-      setIsConnected(true);
-      setError(null);
-      setReconnectAttempts(0);
+  };
+
+  eventSource.onerror = () => {
+    eventSource.close();
+    const attempts = conn.status.reconnectAttempts + 1;
+    conn.status = { isConnected: false, error: 'Connection lost', reconnectAttempts: attempts };
+    notifyStatus(conn);
+
+    const delay = Math.min(1000 * Math.pow(2, attempts - 1), 30000);
+    if (conn.reconnectTimer) {
+      clearTimeout(conn.reconnectTimer);
+    }
+    conn.reconnectTimer = window.setTimeout(() => connect(conn), delay);
+  };
+}
+
+function acquire(url: string): SharedConnection {
+  let conn = connections.get(url);
+  if (!conn) {
+    conn = {
+      url,
+      es: null,
+      listeners: new Set(),
+      statusListeners: new Set(),
+      status: { isConnected: false, error: null, reconnectAttempts: 0 },
+      reconnectTimer: null,
+      closeTimer: null,
+      refCount: 0,
     };
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('[SSE] Received data:', data);
-        setState(data);
-      } catch (err) {
-        console.error('[SSE] Error parsing message:', err);
-        setError('Failed to parse server message');
-      }
-    };
-    
-    eventSource.onerror = (err) => {
-      console.error('[SSE] Connection error:', err);
-      setIsConnected(false);
-      setError('Connection lost');
-      eventSource.close();
-      
-      // Attempt to reconnect with exponential backoff
-      const attempts = reconnectAttempts + 1;
-      setReconnectAttempts(attempts);
-      
-      const delay = Math.min(1000 * Math.pow(2, attempts - 1), 30000); // Max 30 seconds
-      console.log(`[SSE] Reconnecting in ${delay}ms (attempt ${attempts})`);
-      
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      
-      reconnectTimeoutRef.current = window.setTimeout(() => {
-        connect();
-      }, delay);
-    };
-  }, [url, reconnectAttempts]);
-  
-  useEffect(() => {
-    connect();
-    
-    // Cleanup on unmount
+    connections.set(url, conn);
+    connect(conn);
+  }
+  conn.refCount += 1;
+  if (conn.closeTimer) {
+    clearTimeout(conn.closeTimer);
+    conn.closeTimer = null;
+  }
+  return conn;
+}
+
+function release(conn: SharedConnection) {
+  conn.refCount -= 1;
+  if (conn.refCount > 0) return;
+
+  // Grace period before closing: StrictMode remounts and brief component
+  // swaps drop to zero and immediately re-subscribe
+  conn.closeTimer = window.setTimeout(() => {
+    if (conn.refCount > 0) return;
+    conn.es?.close();
+    if (conn.reconnectTimer) {
+      clearTimeout(conn.reconnectTimer);
+    }
+    connections.delete(conn.url);
+  }, 1000);
+}
+
+export const useSSE = (url: string): UseSSEReturn => {
+  const [lastMessage, setLastMessage] = useState<SSEMessage | null>(null);
+  const [status, setStatus] = useState<ConnectionStatus>({
+    isConnected: false,
+    error: null,
+    reconnectAttempts: 0,
+  });
+
+  const listenersRef = useRef<Array<(msg: SSEMessage) => void>>([]);
+
+  const registerListener = useCallback((cb: (msg: SSEMessage) => void) => {
+    listenersRef.current.push(cb);
     return () => {
-      console.log('[SSE] Cleaning up connection');
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
+      listenersRef.current = listenersRef.current.filter(l => l !== cb);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
-  
+  }, []);
+
+  useEffect(() => {
+    const conn = acquire(url);
+
+    const onMessage = (msg: SSEMessage) => {
+      setLastMessage(msg);
+      listenersRef.current.forEach(cb => cb(msg));
+    };
+    const onStatus = () => setStatus({ ...conn.status });
+
+    conn.listeners.add(onMessage);
+    conn.statusListeners.add(onStatus);
+    onStatus(); // sync with the connection's current state
+
+    return () => {
+      conn.listeners.delete(onMessage);
+      conn.statusListeners.delete(onStatus);
+      release(conn);
+    };
+  }, [url]);
+
   return {
-    state,
-    isConnected,
-    error,
-    reconnectAttempts
+    lastMessage,
+    isConnected: status.isConnected,
+    error: status.error,
+    reconnectAttempts: status.reconnectAttempts,
+    registerListener,
   };
 };

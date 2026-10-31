@@ -1,0 +1,117 @@
+/* Graveyard Bonk phone pages: start, lockout, results. The play view
+   itself is src/game/PhoneGame.css. */
+
+.bonk-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.bonk-note {
+  text-align: center;
+  color: var(--color-text-dim);
+}
+
+.bonk-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--text-md);
+}
+
+.bonk-steps strong { color: var(--color-gold); }
+
+.bonk-scroll {
+  margin: var(--space-1) 0 var(--space-4);
+  text-align: center;
+  font-weight: 700;
+  color: var(--color-gold);
+}
+
+.bonk-how .bonk-note {
+  margin: var(--space-3) 0 var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.bonk-offline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  text-align: center;
+}
+
+.bonk-start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Arcade-style initials: three big letters on a dashed baseline */
+.field input.bonk-initials {
+  font-family: var(--font-counter);
+  font-size: var(--text-2xl);
+  letter-spacing: 0.6em;
+  text-align: center;
+  text-transform: uppercase;
+  padding-left: 0.6em; /* balance the trailing letter-spacing */
+  color: var(--color-gold);
+}
+
+.bonk-lock {
+  margin: 0;
+  text-align: center;
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.bonk-go {
+  min-height: 64px;
+  font-size: var(--text-lg);
+}
+
+.bonk-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.bonk-results h2,
+.bonk-how h2 {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--text-xl);
+  letter-spacing: 1px;
+  color: var(--color-accent);
+  text-shadow: var(--glow-accent);
+}
+
+.bonk-score {
+  font-size: clamp(5rem, 28vw, 8rem);
+}
+
+.bonk-caption {
+  font-size: var(--text-xs);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.bonk-facts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-4);
+  margin: var(--space-2) 0;
+  font-weight: 600;
+}

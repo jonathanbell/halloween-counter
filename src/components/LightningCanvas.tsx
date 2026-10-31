@@ -11,11 +11,24 @@ interface Branch {
   children: Branch[];
 }
 
-interface LightningCanvasProps {
-  triggerOnIncrement?: boolean;
+// Stormy: random strikes every 9-17s. Calm: only requested strikes, so
+// during Graveyard Bonk a bolt always means somebody bonked a zombie.
+// Phones are always calm
+export type Weather = 'stormy' | 'calm';
+
+export interface AimedStrike {
+  id: number; // change it to fire again
+  x: number; // 0..1 across the screen
 }
 
-export const LightningCanvas = memo(({ triggerOnIncrement }: LightningCanvasProps) => {
+interface LightningCanvasProps {
+  triggerOnIncrement?: boolean;
+  externalTrigger?: number; // increment to force a strike (SSE effect event)
+  aimedStrike?: AimedStrike;
+  weather?: Weather;
+}
+
+export const LightningCanvas = memo(({ triggerOnIncrement, externalTrigger, aimedStrike, weather = 'stormy' }: LightningCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
   const lastStrikeRef = useRef<number>(0);
@@ -105,8 +118,8 @@ export const LightningCanvas = memo(({ triggerOnIncrement }: LightningCanvasProp
     });
   };
 
-  const createLightning = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
-    const startX = Math.random() * canvas.width;
+  const createLightning = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, aimX?: number) => {
+    const startX = aimX === undefined ? Math.random() * canvas.width : aimX * canvas.width;
     const startY = 0;
     const initialAngle = Math.PI / 2 + (Math.random() - 0.5) * Math.PI / 8;
     const length = canvas.height * 0.5 + Math.random() * canvas.height * 0.3;
@@ -144,12 +157,10 @@ export const LightningCanvas = memo(({ triggerOnIncrement }: LightningCanvasProp
     animate();
   };
 
+  // Resize handling (mount only)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
     const handleResize = () => {
       canvas.width = window.innerWidth;
@@ -158,21 +169,53 @@ export const LightningCanvas = memo(({ triggerOnIncrement }: LightningCanvasProp
 
     handleResize();
     window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
     if (triggerOnIncrement) {
       createLightning(canvas, ctx);
       lastStrikeRef.current = Date.now();
     }
 
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
+    // No cleanup: cancelling the fade when triggerOnIncrement flips back froze
+    // the first frame on screen in background tabs, where rAF is paused
   }, [triggerOnIncrement]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // External trigger (SSE effect_lightning event from server)
   useEffect(() => {
+    if (!externalTrigger) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    createLightning(canvas, ctx);
+    lastStrikeRef.current = Date.now();
+  }, [externalTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Aimed strike (Graveyard Bonk: the bolt lands on the bonked grave)
+  useEffect(() => {
+    if (!aimedStrike) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    createLightning(canvas, ctx, aimedStrike.x);
+    lastStrikeRef.current = Date.now();
+  }, [aimedStrike]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (weather === 'calm') return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -197,18 +240,16 @@ export const LightningCanvas = memo(({ triggerOnIncrement }: LightningCanvasProp
 
     const interval = setInterval(checkForLightning, 500);
 
-    setTimeout(() => {
+    const opener = setTimeout(() => {
       createLightning(canvas, ctx);
       lastStrikeRef.current = Date.now();
     }, 1000);
 
     return () => {
       clearInterval(interval);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      clearTimeout(opener);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [weather]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <canvas

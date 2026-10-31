@@ -12,18 +12,3 @@ export interface StatsData {
   startTime: number;
   timestamps: number[];
 }
-
-export interface QueryParams {
-  currentCount?: number;
-  initialCandyCount?: number;
-}
-
-export interface ZombieInstance {
-  id: string;
-  number: number;
-  position: number;
-  speed: number;
-  scale: number;
-  yOffset: number;
-  spawnTime: number;
-}

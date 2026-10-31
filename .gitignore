@@ -1,26 +1,32 @@
-# Logs
-logs
+target/
+*.iml
+*.id
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Logs
+*.log
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-.idea
+# Editor
+.idea/
+*.iml
+.history
+
+# Node
+node_modules/
+dist/
+/electron-out
+/electron-releases
+
+# Frontend bundle: built by the Dockerfile's frontend stage, and locally
+# by `npm run bundle` for prod-like runs on :8080
+src/main/resources/static/
+
+# Token-bearing QR codes from `npm run qr`, for printing only
+qr-print/
+
+# Deleted events from `make reset-year` (initials, voter ids)
+backups/
+
+# OS
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 .claude/

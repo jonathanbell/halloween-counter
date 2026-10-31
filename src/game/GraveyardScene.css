@@ -1,0 +1,31 @@
+/* Labels drei's <Html> floats above a grave after a bonk. Shared by the
+   phone and the garage door; the door scales them up under .projection. */
+
+.bonk-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  line-height: 1.05;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  color: var(--color-gold);
+  text-shadow: 0 2px 0 #000, 0 0 12px var(--color-accent-glow);
+  animation: label-rise 1.1s ease-out forwards;
+}
+
+.bonk-label span:first-child { font-size: var(--text-xl); }
+
+.bonk-label.great { color: var(--color-scene-slime); }
+.bonk-label.bad { color: var(--color-danger); }
+.bonk-label.meh { color: var(--color-text-dim); }
+
+/* Pop in, hold long enough to read, then drift up and fade */
+@keyframes label-rise {
+  0% { transform: translateY(10px) scale(0.5); opacity: 0; }
+  12% { transform: translateY(0) scale(1.15); opacity: 1; }
+  24% { transform: translateY(-2px) scale(1); opacity: 1; }
+  70% { transform: translateY(-10px) scale(1); opacity: 1; }
+  100% { transform: translateY(-34px) scale(1); opacity: 0; }
+}

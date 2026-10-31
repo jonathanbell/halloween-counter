@@ -1,0 +1,115 @@
+/* Page-specific only. Cards, buttons and readouts come from
+   public/primitives.css. */
+
+.stats-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.card h3 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+/* One plain-words line under each heading, for a kid with a candy bag */
+.card-desc {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-dim);
+}
+
+.year-toggle {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.year-btn {
+  flex: 1;
+}
+
+.stats-total {
+  text-align: center;
+}
+
+.stats-total-label {
+  font-size: var(--text-xs);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.stats-total-value {
+  font-size: 56px;
+  margin: var(--space-2) 0 0;
+}
+
+.stats-empty {
+  text-align: center;
+  color: var(--color-text-dim);
+}
+
+.hof-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.hof-list li {
+  display: grid;
+  grid-template-columns: 3.5ch 1fr auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+.hof-list li:nth-child(odd) { background: var(--color-surface); }
+
+/* The row the phone's "See yourself in the Hall of Fame" link points at */
+.hof-list li.highlight {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  box-shadow: var(--glow-accent);
+}
+
+.hof-list li.highlight .hof-score,
+.hof-list li.highlight .hof-rank,
+.hof-list li.highlight .hof-avg {
+  color: var(--color-bg);
+  text-shadow: none;
+}
+
+.hof-rank { color: var(--color-text-dim); font-weight: 600; }
+.hof-initials { font-family: var(--font-display); font-size: var(--text-lg); letter-spacing: 1px; }
+.hof-avg { font-size: var(--text-xs); color: var(--color-text-dim); }
+.hof-score { font-size: var(--text-xl); }
+
+/* Named apart from App.css's .vote-row - both stylesheets load on /stats. */
+.stats-vote-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.vote-label {
+  width: 100%;
+  text-align: center;
+  font-size: var(--text-xs);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.vote-recorded {
+  width: 100%;
+  text-align: center;
+  color: var(--color-vote);
+  font-size: var(--text-xs);
+}

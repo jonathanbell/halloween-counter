@@ -13,41 +13,79 @@ interface FallingEmoji {
 
 interface DroolingRainProps {
   isActive?: boolean;
+  externalTrigger?: number; // increment to force a rain wave (SSE effect event)
+  burstTrigger?: number; // increment for a short candy-only burst (Grandma got bonked)
+  count?: number; // trick-or-treaters so far: one emoji each per wave
 }
 
 // Mix of drooling faces and candy emojis (drooling face weighted more heavily)
 const EMOJI_POOL = ['🤤', '🤤', '🤤', '🤤', '🍬', '🍭', '🍫'];
 
-export const DroolingRain = memo(({ isActive = true }: DroolingRainProps) => {
+// Grandma's bowl: candy only, no drool, over in about two seconds
+const BURST_POOL = ['🍬', '🍭', '🍫'];
+
+interface WaveShape {
+  count?: [number, number]; // omitted: one emoji per trick-or-treater
+  delayMs: number;
+  durationMs: [number, number];
+  pool: string[];
+}
+
+const WAVE: WaveShape = { delayMs: 2000, durationMs: [3000, 5000], pool: EMOJI_POOL };
+const BURST: WaveShape = { count: [14, 20], delayMs: 300, durationMs: [1400, 1900], pool: BURST_POOL };
+
+const between = ([min, max]: [number, number]) => min + Math.random() * (max - min);
+
+// A late-night wave or a mashed rain button stops here, so phones stay
+// smooth. Past it the emoji no longer match the count
+const MAX_LIVE_EMOJI = 200;
+
+export const DroolingRain = memo(({ isActive = true, externalTrigger, burstTrigger, count: visitors = 0 }: DroolingRainProps) => {
   const [emojis, setEmojis] = useState<FallingEmoji[]>([]);
   const nextIdRef = useRef(0);
   const lastRainRef = useRef(0);
 
-  const createEmojiWave = () => {
+  // The random-rain interval holds the first render's createEmojiWave, so
+  // it reads the count through a ref
+  const visitorsRef = useRef(visitors);
+  visitorsRef.current = visitors;
+
+  const createEmojiWave = (shape: WaveShape = WAVE) => {
     const now = Date.now();
-    const count = 15 + Math.floor(Math.random() * 20); // 15-35 emojis per wave
+    const count = shape.count ? Math.floor(between(shape.count)) : visitorsRef.current;
     const newEmojis: FallingEmoji[] = [];
 
     for (let i = 0; i < count; i++) {
       newEmojis.push({
         id: nextIdRef.current++,
         x: Math.random() * 100, // Percentage across screen
-        delay: Math.random() * 2000, // Stagger start times up to 2s
-        duration: 3000 + Math.random() * 2000, // 3-5s fall time
+        delay: Math.random() * shape.delayMs, // Staggered start
+        duration: between(shape.durationMs), // Fall time
         size: 40 + Math.random() * 40, // 40-80px size
         swayAmount: 30 + Math.random() * 50, // How much it sways side to side
-        emoji: EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)], // Random emoji from pool
+        emoji: shape.pool[Math.floor(Math.random() * shape.pool.length)],
       });
     }
 
     lastRainRef.current = now;
-    setEmojis(prev => [...prev, ...newEmojis]);
+    setEmojis(prev => [...prev, ...newEmojis.slice(0, Math.max(0, MAX_LIVE_EMOJI - prev.length))]);
 
     // Clean up old emojis after animation completes
     setTimeout(() => {
       setEmojis(prev => prev.filter(e => !newEmojis.some(ne => ne.id === e.id)));
     }, 7000); // Max duration + delay
   };
+
+  // External trigger (SSE effect_candy_rain event from server)
+  useEffect(() => {
+    if (!externalTrigger) return;
+    createEmojiWave();
+  }, [externalTrigger]);
+
+  useEffect(() => {
+    if (!burstTrigger) return;
+    createEmojiWave(BURST);
+  }, [burstTrigger]);
 
   useEffect(() => {
     if (!isActive) {

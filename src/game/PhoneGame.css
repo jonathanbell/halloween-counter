@@ -1,0 +1,119 @@
+/* Graveyard Bonk, phone play view. Full screen without viewport units:
+   fixed + inset fills the phone, and nothing here applies to the
+   projector. */
+
+.phone-game {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--color-scene-sky);
+  /* No double-tap zoom, scroll, text selection or iOS callout mid-game */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.phone-hud {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + var(--space-3));
+  left: var(--space-4);
+  right: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.hud-initials,
+.hud-clock {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  letter-spacing: 2px;
+  color: var(--color-text);
+  text-shadow: 0 2px 6px #000;
+  min-width: 3.5ch;
+}
+
+.hud-clock { text-align: right; }
+
+.hud-score {
+  font-size: var(--text-2xl);
+}
+
+.phone-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font-family: var(--font-display);
+  font-size: 7rem;
+  line-height: 1;
+  text-align: center;
+  color: var(--color-gold);
+  text-shadow: 0 0 30px var(--color-accent-glow), 0 6px 0 #000;
+  animation: overlay-pop 0.9s ease-out both;
+}
+
+.phone-overlay.go { color: var(--color-scene-slime); }
+
+.phone-banner {
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-7));
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-danger);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  letter-spacing: 1px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: var(--shadow-card);
+  animation: banner-shake 0.4s ease-out;
+}
+
+/* End game, tucked into the bottom-left grass, clear of the graves.
+   Barely there until the first tap arms it */
+.phone-quit {
+  position: absolute;
+  left: var(--space-4);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-4));
+  min-width: 40px;
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-hairline-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-dim);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.phone-quit.armed {
+  opacity: 1;
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+@keyframes overlay-pop {
+  0% { transform: scale(2.2); opacity: 0; }
+  25% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.9; }
+}
+
+@keyframes banner-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-10px) rotate(-3deg); }
+  40% { transform: translateX(10px) rotate(3deg); }
+  60% { transform: translateX(-6px) rotate(-1deg); }
+  80% { transform: translateX(6px) rotate(1deg); }
+}

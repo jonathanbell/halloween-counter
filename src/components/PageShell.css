@@ -1,0 +1,12 @@
+/* Layout only - the shell's visual rules (.page-shell, .page-title, .rule,
+   .page-nav, .page-end) live in public/primitives.css so the static admin
+   pages share them. */
+
+.page-content {
+  flex: 1;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}

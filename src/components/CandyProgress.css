@@ -1,13 +1,19 @@
+/* Phone-first; viewport-unit rules scoped to .projection. */
+
 .candy-progress-container {
   position: relative;
-  width: 80%;
-  max-width: 800px;
-  margin: 1vh auto 3vh auto;
+  width: 100%;
   z-index: 10;
   transition: all 0.5s ease;
 }
 
-.candy-progress-container.empty {
+.app.projection .candy-progress-container {
+  width: 80%;
+  max-width: 800px;
+  margin: 1vh auto 3vh auto;
+}
+
+.app.projection .candy-progress-container.empty {
   width: 90%;
   max-width: 1000px;
 }
@@ -15,20 +21,34 @@
 .candy-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1vh;
-  font-size: 3.5vh;
-  color: #ffd700;
-  text-shadow:
-    2px 2px 0px #000,
-    -1px -1px 0px #000;
+  align-items: baseline;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-lg);
+  color: var(--color-gold);
   font-weight: bold;
 }
 
+.app.projection .candy-header {
+  gap: 2vh;
+  font-size: 3.5vh;
+  margin-bottom: 1vh;
+  text-shadow:
+    2px 2px 0px #000,
+    -1px -1px 0px #000;
+}
+
 .candy-title {
-  font-family: 'Creepster', cursive;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.25rem, 5.5vw, 1.6rem);
+  color: var(--color-accent);
+  text-shadow: 0 0 16px var(--color-accent-glow);
+}
+
+/* nowrap: a tight header must never drop the trailing 🍬 onto its own row */
+.app.projection .candy-title {
+  white-space: nowrap;
   font-size: 7vh;
-  color: #ff6b35;
   text-shadow:
     3px 3px 0px #000,
     -1px -1px 0px #000,
@@ -38,26 +58,44 @@
 }
 
 .candy-count {
-  font-family: 'Digital-7', monospace;
-  color: #ff6b35;
+  font-family: var(--font-counter);
+  font-size: var(--text-3xl);
+  position: relative;
+  top: -8px;
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Garage door: scaled with the title */
+.app.projection .candy-count {
+  top: 0;
+  font-size: 5.5vh;
+  white-space: nowrap;
 }
 
 .progress-bar-outer {
   width: 100%;
-  height: 6vh;
-  background: #1a1a1a;
-  border: 3px solid #8b4513;
-  border-radius: 2vh;
+  height: 26px;
+  background: var(--color-panel);
+  border: 2px solid var(--color-wood);
+  border-radius: var(--radius-md);
   overflow: hidden;
   position: relative;
-  box-shadow:
-    inset 0 0 20px rgba(0, 0, 0, 0.8),
-    0 0 15px rgba(139, 69, 19, 0.5);
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.8);
   transition: all 0.5s ease;
   margin: 0 auto;
 }
 
-.progress-bar-outer.empty {
+.app.projection .progress-bar-outer {
+  height: 6vh;
+  border-width: 3px;
+  border-radius: 2vh;
+  box-shadow:
+    inset 0 0 20px rgba(0, 0, 0, 0.8),
+    0 0 15px rgba(139, 69, 19, 0.5);
+}
+
+.app.projection .progress-bar-outer.empty {
   height: 10vh;
   width: 150%;
   margin-left: -25%;
@@ -65,30 +103,43 @@
 
 .progress-bar-inner {
   height: 100%;
-  transition: width 0.5s ease, background 0.5s ease;
+  transition:
+    width 0.5s ease,
+    background 0.5s ease;
   position: relative;
-  border-radius: 2vh 0 0 2vh;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
   overflow: hidden;
 }
 
+/* The trough is a physical prop, not a status readout, so it keeps its own
+   ramp rather than borrowing --color-success / --color-danger. */
 .progress-bar-inner.green {
-  background: linear-gradient(90deg, #2ecc71, #27ae60);
+  background: linear-gradient(
+    90deg,
+    var(--color-progress-ok),
+    var(--color-progress-ok-2)
+  );
 }
 
 .progress-bar-inner.yellow {
-  background: linear-gradient(90deg, #f39c12, #e67e22);
+  background: linear-gradient(
+    90deg,
+    var(--color-progress-warn),
+    var(--color-progress-warn-2)
+  );
 }
 
 .progress-bar-inner.red {
-  background: linear-gradient(90deg, #e74c3c, #c0392b);
+  background: linear-gradient(
+    90deg,
+    var(--color-progress-crit),
+    var(--color-progress-crit-2)
+  );
 }
 
 .progress-glow {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: linear-gradient(
     90deg,
     transparent,
@@ -125,19 +176,26 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 7vh;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 5vw, 1.6rem);
   font-weight: bold;
-  color: #ff0000;
+  color: var(--color-alarm);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  z-index: 100;
   text-shadow:
     0 0 20px rgba(255, 0, 0, 1),
     0 0 40px rgba(255, 0, 0, 0.8),
     3px 3px 0px #000,
     -3px -3px 0px #000;
-  animation: flash 0.3s infinite alternate, grow 0.5s ease-out;
-  font-family: 'Creepster', cursive;
-  letter-spacing: 0.1em;
-  white-space: nowrap;
-  z-index: 100;
+  animation: flash 0.3s infinite alternate;
+}
+
+.app.projection .empty-message {
+  font-size: 7vh;
+  animation:
+    flash 0.3s infinite alternate,
+    grow 0.5s ease-out;
 }
 
 @keyframes flash {
@@ -163,6 +221,11 @@
 .candy-icons {
   display: flex;
   justify-content: space-between;
+  margin-top: var(--space-1);
+  font-size: 15px;
+}
+
+.app.projection .candy-icons {
   margin-top: 1vh;
   font-size: 2.5vh;
 }
@@ -176,4 +239,12 @@
   opacity: 0.2;
   filter: grayscale(100%);
   transform: scale(0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-glow,
+  .progress-bar-inner.critical,
+  .empty-message {
+    animation: none;
+  }
 }

@@ -1,0 +1,106 @@
+/* Design tokens - the ONLY CSS token sheet.
+   Linked from index.html (the React app) and from every static admin page in
+   public/, which is what stops the two from drifting apart.
+   src/theme.ts mirrors the colours for JS-side consumers (Recharts, canvas);
+   src/test/theme.test.ts guards the parity.
+
+   Self-hosted Digital-7 (freeware, see public/fonts/DIGITAL-7-LICENSE.txt). */
+
+@font-face {
+  font-family: 'Digital-7';
+  src: url('/fonts/digital-7.ttf') format('truetype');
+  font-display: swap;
+}
+
+:root {
+  /* Colour ------------------------------------------------------------- */
+  --color-accent: #ff6b35;            /* pumpkin orange - buttons, borders */
+  --color-accent-glow: rgba(255, 107, 53, 0.5);
+  --color-gold: #ffd700;              /* counter digits, scores */
+  --color-bg: #0a0a14;                /* deep dark page background */
+  --color-bg-2: #161226;              /* page gradient end */
+  --color-panel: #1a1a1a;             /* digit wells, progress trough */
+  --color-panel-hi: #2d2d2d;
+  --color-surface: rgba(255, 255, 255, 0.08);   /* cards, panels */
+  --color-border: rgba(255, 255, 255, 0.25);
+  --color-hairline: rgba(255, 255, 255, 0.1);   /* grid lines */
+  --color-hairline-strong: rgba(255, 255, 255, 0.18);
+  --color-text: #f5f0e6;              /* bone white */
+  --color-text-dim: rgba(245, 240, 230, 0.6);
+  --color-success: #4caf50;
+  --color-warning: #fbbf24;
+  --color-danger: #dc2626;
+  --color-alarm: #ff0000;          /* out-of-candy strikethrough + banner */
+  --color-vote: #9b59b6;              /* purple - vote widgets only */
+  --color-wood: #8b4513;              /* progress trough - reads as an object */
+
+  /* Progress states keep their own ramp: the trough is a physical prop, not
+     a status indicator, so it does not borrow --color-success/-danger. */
+  --color-progress-ok: #2ecc71;
+  --color-progress-ok-2: #27ae60;
+  --color-progress-warn: #f39c12;
+  --color-progress-warn-2: #e67e22;
+  --color-progress-crit: #e74c3c;
+  --color-progress-crit-2: #c0392b;
+
+  /* Graveyard Bonk scene: mirrored in src/theme.ts for three.js, which
+     cannot read CSS variables. Listed here so this stays the one sheet. */
+  --color-scene-sky: #0b0d1f;
+  --color-scene-ground: #1d2b1f;
+  --color-scene-moon: #fff3c4;
+  --color-scene-moonlight: #9fb4ff;
+  --color-scene-lantern: #ffb35c;
+  --color-scene-slime: #8cff5a;
+  --color-scene-googly: #ffffff;
+  --color-scene-pupil: #111111;
+  --color-scene-zombie-skin: #86b56a;
+  --color-scene-zombie-shirt: #56698f;
+  --color-scene-zombie-pants: #3b3346;
+  --color-scene-mouth: #3a1020;
+  --color-scene-grandma-skin: #f1c7a1;
+  --color-scene-grandma-hair: #d8d8e0;
+  --color-scene-grandma-cardigan: #c58fd8;
+  --color-scene-cat: #1a1a22;
+  --color-scene-cat-nose: #ff8fb1;
+  --color-scene-kevin-skin: #e8b48a;
+  --color-scene-kevin-hoodie: #3d7bd9;
+  --color-scene-kevin-jeans: #2f4a7a;
+  --color-scene-sneaker: #f2f2f2;
+
+  --gradient-page: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-2) 100%);
+
+  /* Space - 4px base --------------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Radius ------------------------------------------------------------- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* Type --------------------------------------------------------------- */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+  --text-2xl: 40px;
+  --text-3xl: 48px;
+
+  /* Elevation ---------------------------------------------------------- */
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --glow-accent: 0 0 16px var(--color-accent-glow);
+  --glow-gold: 0 0 20px rgba(255, 215, 0, 0.5);
+
+  /* Type families ------------------------------------------------------ */
+  --font-display: 'Creepster', cursive;
+  --font-counter: 'Digital-7', monospace;
+  --font-body: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --font-mono: monospace;
+}

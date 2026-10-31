@@ -1,0 +1,113 @@
+package com.halloween.candy_counter.service;
+
+import com.halloween.candy_counter.model.Event;
+import com.halloween.candy_counter.model.Settings;
+import com.halloween.candy_counter.repository.EventRepository;
+import com.halloween.candy_counter.repository.SettingsRepository;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+public class CounterService {
+
+    private final EventRepository eventRepository;
+    private final SettingsRepository settingsRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final GameService gameService;
+
+    public CounterService(EventRepository eventRepository,
+                          SettingsRepository settingsRepository,
+                          ApplicationEventPublisher eventPublisher,
+                          GameService gameService) {
+        this.eventRepository = eventRepository;
+        this.settingsRepository = settingsRepository;
+        this.eventPublisher = eventPublisher;
+        this.gameService = gameService;
+    }
+
+    @Transactional
+    public Event increment(Integer year) {
+        Event event = new Event("increment", year);
+        Event saved = eventRepository.save(event);
+        eventPublisher.publishEvent(new CounterUpdatedEvent(saved));
+        return saved;
+    }
+
+    @Transactional
+    public Event vote(Integer year, String candyType, @Nullable UUID voterId) {
+        Event saved = eventRepository.save(Event.vote(year, candyType, voterId));
+        eventPublisher.publishEvent(new CounterUpdatedEvent(saved));
+        return saved;
+    }
+
+    @Transactional
+    public Event effectLightning(Integer year) {
+        Event event = new Event("effect_lightning", year);
+        Event saved = eventRepository.save(event);
+        eventPublisher.publishEvent(new EffectEvent(saved, "lightning"));
+        return saved;
+    }
+
+    @Transactional
+    public Event effectCandyRain(Integer year) {
+        Event event = new Event("effect_candy_rain", year);
+        Event saved = eventRepository.save(event);
+        eventPublisher.publishEvent(new EffectEvent(saved, "candy-rain"));
+        return saved;
+    }
+
+    public Map<String, Object> getState(Integer year) {
+        Long eventTotal = eventRepository.countIncrementsByYear(year);
+        Optional<Settings> settings = settingsRepository.findByYear(year);
+        int adjustment = settings
+            .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
+            .orElse(0);
+        int initialCandy = settings
+            .map(s -> s.getInitialCandyCount() != null ? s.getInitialCandyCount() : 300)
+            .orElse(300);
+        long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
+
+        Map<String, Object> state = new HashMap<>();
+        state.put("year", year);
+        state.put("currentCount", total);
+        state.put("initialCandyCount", initialCandy);
+        state.put("candyRemaining", Math.max(0, initialCandy - total));
+        // Lets a projection or phone refreshed mid-game catch up: who is
+        // playing and how long is left (null / 0 when no game is running)
+        state.put("gameActive", gameService.isGameActive());
+        state.put("gameInitials", gameService.activeInitials());
+        state.put("gameEndsInMs", gameService.endsInMs());
+        return state;
+    }
+
+    // Published after the save; AFTER_COMMIT listeners re-read the total
+    public static class CounterUpdatedEvent {
+        private final Event event;
+
+        public CounterUpdatedEvent(Event event) {
+            this.event = event;
+        }
+
+        public Event getEvent() { return event; }
+    }
+
+    public static class EffectEvent {
+        private final Event event;
+        private final String effectType;
+
+        public EffectEvent(Event event, String effectType) {
+            this.event = event;
+            this.effectType = effectType;
+        }
+
+        public Event getEvent() { return event; }
+        public String getEffectType() { return effectType; }
+    }
+}

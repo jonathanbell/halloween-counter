@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: halloween-candy-counter
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/candy}
+    username: ${DATABASE_USER:candy_user}
+    password: ${DATABASE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: true
+    # This app only ever migrates a fresh, empty database. baseline-on-migrate
+    # would silently skip V1 when the schema has any pre-existing junk (e.g.
+    # objects inherited from a dirty template1), leaving `events` uncreated;
+    # with it off, Flyway fails loudly on a non-empty schema instead
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: 8080
+  shutdown: graceful
+
+logging:
+  level:
+    root: INFO
+    com.halloween: DEBUG
+
+admin:
+  token: ${ADMIN_TOKEN:your-default-fallback-admin-token-change-me}
+  settings-token: ${SETTINGS_TOKEN:your-default-settings-token-change-me}

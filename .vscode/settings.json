@@ -1,7 +1,5 @@
 {
-  "cSpell.words": [
-    "Avenir",
-    "kscb",
-    "spacebar"
-  ]
+  "java.compile.nullAnalysis.mode": "automatic",
+  "makefile.configureOnOpen": false,
+  "spring-boot.ls.java.validation.spring-boot-version-validation": "off"
 }

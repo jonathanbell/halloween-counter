@@ -1,0 +1,49 @@
+/* The "who to bonk" rows on the start screen. The stage's aspect ratio
+   and the name widths come from CastLineup.tsx's slot constants. */
+
+.cast {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.cast + .cast { margin-top: var(--space-4); }
+
+.cast-heading {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.cast.bonk .cast-heading { color: var(--color-success); }
+.cast.nope .cast-heading { color: var(--color-danger); }
+
+.cast-stage {
+  align-self: center;
+  overflow: hidden;
+  border: 2px solid var(--color-success);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.cast.nope .cast-stage { border-color: var(--color-danger); }
+
+.cast-names {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.cast-names small {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-dim);
+}

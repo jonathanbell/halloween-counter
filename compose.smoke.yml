@@ -1,0 +1,35 @@
+# Local smoke test only - never deployed. `make smoke` / `make smoke-down`.
+#
+# Boots the production image against a real Postgres 16 so problems H2 hides
+# (like Flyway's separate Postgres module) surface before shipping. Postgres
+# data lives on tmpfs: every run starts from an empty database and nothing
+# persists. Credentials below are throwaway values for localhost only.
+
+services:
+  app:
+    image: ${IMAGE:-candy-counter:dev}
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/candy
+      DATABASE_USER: candy_user
+      DATABASE_PASSWORD: localtest
+      ADMIN_TOKEN: test-admin
+      SETTINGS_TOKEN: test-settings
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: candy
+      POSTGRES_USER: candy_user
+      POSTGRES_PASSWORD: localtest
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U candy_user -d candy"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

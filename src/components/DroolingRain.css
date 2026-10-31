@@ -13,9 +13,13 @@
   position: absolute;
   top: -100px;
   animation: droolFall linear forwards;
-  filter: drop-shadow(0 0 10px rgba(255, 200, 0, 0.5));
   will-change: transform;
   opacity: 0; /* Start invisible */
+}
+
+/* Door only: a filter per emoji is what a phone chokes on at 300 */
+.app.projection .drooling-emoji {
+  filter: drop-shadow(0 0 10px rgba(255, 200, 0, 0.5));
 }
 
 @keyframes droolFall {
