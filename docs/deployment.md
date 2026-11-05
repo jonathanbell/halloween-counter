@@ -152,8 +152,10 @@ update.
 ## Dress rehearsal (do this in October)
 
 - [ ] `make deploy` a fresh build; `make verify` passes
-- [ ] Projection open on the garage laptop over garage wifi for 1+ hour;
-      count updates and the SSE connection survives idling
+- [ ] Projection open on the garage laptop over garage wifi for 1+ hour
+      under `caffeinate -dis` ([below](#keep-the-garage-laptop-awake));
+      count updates, the SSE connection survives idling, and the screen
+      never saves, sleeps or locks
 - [ ] Increment from the admin phone on cellular (not wifi)
 - [ ] Play a full Graveyard Bonk game from a phone on cellular while the
       projection runs: bonks show on the door with lightning, results and
@@ -165,6 +167,42 @@ update.
 - [ ] `make status` - box memory is sane with the app under load
 - [ ] `ping halloween-counter.jonathanbell.ca` from garage wifi and phone
       LTE; expect well under 100 ms
+
+## Keep the garage laptop awake
+
+If macOS starts the screen saver, turns the display off or locks, the
+garage door goes black. `caffeinate` (built into macOS) holds all of that
+off while it runs, without touching System Settings, so there is nothing
+to undo afterwards.
+
+On the night, before opening the projection, in Terminal on the garage
+laptop:
+
+```bash
+caffeinate -dis   # no display, idle or system sleep until Ctrl+C
+```
+
+Leave that Terminal window open (minimise it). Keep the laptop plugged in
+(`-s` only holds on AC power) and the lid open (closing it still sleeps).
+Auto-lock only follows the screen saver, display sleep or system sleep, so
+holding those off holds off the lock too.
+
+Check it is holding:
+
+```bash
+pmset -g assertions | grep caffeinate
+```
+
+Turn on Do Not Disturb too, or notification banners land on the garage
+door: Control Center (menu bar) > Focus > Do Not Disturb.
+
+**After Halloween:** Ctrl+C in that window, or quit Terminal, and turn Do
+Not Disturb off. No settings were changed, so the laptop's own screen
+saver, display sleep and lock come straight back.
+
+Fallback, if the rehearsal shows the screen saver anyway: System Settings >
+Lock Screen, set the screen saver and display-off timeouts to Never. Note
+the old values first and set them back after.
 
 ## On the night: reset the year
 

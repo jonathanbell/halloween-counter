@@ -130,7 +130,10 @@ checklist); the short version:
 
 ### Showtime
 
-1. Set laptop screensaver to NEVER engage.
+1. Garage laptop: run `caffeinate -dis` in Terminal and leave it open, so
+   the screen never saves, sleeps or locks, and turn on Do Not Disturb so
+   no notifications hit the door
+   ([details](docs/deployment.md#keep-the-garage-laptop-awake)).
 1. Garage laptop browser: `/?projection&token=<admin-token>`, `Ctrl+F` for
    fullscreen. Spacebar increments as backup.
 1. Admin phone: scan the admin QR -> `/remote.html` big button. Tap once per
@@ -165,6 +168,9 @@ halloween'`. All state lives in Postgres; screens reconnect on their own
   it lives in a datacenter, not the garage.
 
 ### After
+
+Ctrl+C the garage laptop's `caffeinate` and turn Do Not Disturb off; its
+normal screen saver and lock come back on their own.
 
 `/stats` compares 2026 against 2025 (346 candies, seeded). Data is stored
 per-year, so next year is a settings row away.
