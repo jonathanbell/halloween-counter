@@ -332,7 +332,7 @@ function Grandma({ dizzy }: { dizzy: boolean }) {
         <cylinderGeometry args={[0.2, 0.12, 0.12, 16]} />
         <meshStandardMaterial color={colors.accent} roughness={0.6} />
       </mesh>
-      {[colors.gold, colors.vote, colors.success, colors.danger].map((c, i) => (
+      {[colors.gold, colors.candyPurple, colors.success, colors.danger].map((c, i) => (
         <mesh key={c} position={[-0.09 + i * 0.06, 0.58, 0.36 + (i % 2) * 0.04]}>
           <sphereGeometry args={[0.04, 8, 6]} />
           <meshStandardMaterial color={c} />

@@ -32,10 +32,6 @@ public class Settings {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
-    // JSON list of `CandyOption`; SettingsService owns the (de)serializing
-    @Column(name = "candy_options")
-    private String candyOptions;
-
     public Settings() {}
 
     public Settings(Integer year, Integer initialCandyCount) {
@@ -49,12 +45,9 @@ public class Settings {
     public UUID getActiveGameSession() { return activeGameSession; }
     public Integer getCountAdjustment() { return countAdjustment; }
     public Instant getUpdatedAt() { return updatedAt; }
-    public String getCandyOptions() { return candyOptions; }
-
     public void setYear(Integer year) { this.year = year; }
     public void setInitialCandyCount(Integer initialCandyCount) { this.initialCandyCount = initialCandyCount; }
     public void setActiveGameSession(UUID session) { this.activeGameSession = session; }
     public void setCountAdjustment(Integer countAdjustment) { this.countAdjustment = countAdjustment; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
-    public void setCandyOptions(String candyOptions) { this.candyOptions = candyOptions; }
 }

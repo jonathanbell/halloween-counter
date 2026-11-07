@@ -20,7 +20,7 @@ export const colors = {
   warning: '#fbbf24',
   danger: '#dc2626',
   alarm: '#ff0000', // out-of-candy strikethrough + banner
-  vote: '#9b59b6', // purple - vote widgets only
+  candyPurple: '#9b59b6',
   wood: '#8b4513', // progress trough
 
   // Graveyard Bonk scene - three.js materials and lights cannot read CSS

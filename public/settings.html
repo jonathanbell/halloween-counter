@@ -64,24 +64,6 @@
     .message:empty { display: none; }
 
     .token-missing { text-align: center; padding: var(--space-7) var(--space-4); }
-
-    .candy-list {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-      margin-bottom: var(--space-3);
-    }
-
-    .candy-row { display: flex; align-items: center; gap: var(--space-3); }
-    .candy-fields { flex: 1; min-width: 0; }
-    .candy-remove { padding: 0 var(--space-4); }
-
-    .candy-thumb {
-      width: var(--space-7);
-      height: var(--space-7);
-      flex-shrink: 0;
-      object-fit: contain;
-    }
   </style>
 </head>
 <body>
@@ -136,16 +118,6 @@
     </form>
 
     <div id="message" class="message"></div>
-
-    <div class="card">
-      <h3 class="sec-head">🍫 Favorite candy</h3>
-      <div class="candy-list" id="candyList"></div>
-      <div class="button-group">
-        <button type="button" class="btn btn-ghost" id="addCandyBtn">+ Add candy</button>
-        <button type="button" class="btn btn-primary" id="saveCandyBtn">Save candy</button>
-      </div>
-      <div id="candyMessage" class="message" style="margin-top: var(--space-3);"></div>
-    </div>
   </div>
 
   <script src="/admin.js"></script>
@@ -235,106 +207,6 @@
           messageEl.className = 'message';
           messageEl.textContent = '';
         }, 5000);
-      }
-    });
-
-    // Favorite-candy list. Rows keep their server id in data-id so votes
-    // survive a rename; new rows have none and the server slugs one.
-    // Built with value/textContent, never innerHTML
-    const candyList = document.getElementById('candyList');
-    const candyMessage = document.getElementById('candyMessage');
-
-    function addCandyRow(option = { id: null, label: '', imageUrl: null }) {
-      const row = document.createElement('div');
-      row.className = 'candy-row';
-      if (option.id) row.dataset.id = option.id;
-
-      const thumb = document.createElement('img');
-      thumb.className = 'candy-thumb';
-      thumb.alt = '';
-
-      const fields = document.createElement('div');
-      fields.className = 'field candy-fields';
-
-      const label = document.createElement('input');
-      label.className = 'candy-label';
-      label.placeholder = 'Candy name';
-      label.setAttribute('aria-label', 'Candy name');
-      label.maxLength = 50;
-      label.value = option.label;
-
-      const url = document.createElement('input');
-      url.className = 'candy-url';
-      url.type = 'url';
-      url.placeholder = 'https://… image (optional)';
-      url.setAttribute('aria-label', 'Image URL');
-      url.value = option.imageUrl ?? '';
-
-      // Live preview, so a dead or hotlink-blocked image shows before saving
-      const preview = () => {
-        const src = url.value.trim();
-        thumb.style.visibility = src ? 'visible' : 'hidden';
-        if (src) thumb.src = src;
-      };
-      url.addEventListener('input', preview);
-      preview();
-
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'btn btn-ghost candy-remove';
-      remove.textContent = '✕';
-      remove.setAttribute('aria-label', 'Remove candy');
-      remove.addEventListener('click', () => row.remove());
-
-      fields.append(label, url);
-      row.append(thumb, fields, remove);
-      candyList.append(row);
-      return label;
-    }
-
-    async function loadCandy() {
-      try {
-        const response = await fetch(`/api/vote/options?year=${YEAR}`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        (await response.json()).forEach(option => addCandyRow(option));
-      } catch (error) {
-        candyMessage.className = 'message error';
-        candyMessage.textContent = `⚠️ Could not load candy - ${failureLabel(error)}`;
-      }
-    }
-
-    loadCandy();
-
-    document.getElementById('addCandyBtn').addEventListener('click', () => addCandyRow().focus());
-
-    document.getElementById('saveCandyBtn').addEventListener('click', async () => {
-      const options = [...candyList.querySelectorAll('.candy-row')].map(row => ({
-        id: row.dataset.id ?? null,
-        label: row.querySelector('.candy-label').value,
-        imageUrl: row.querySelector('.candy-url').value || null,
-      }));
-
-      try {
-        const response = await fetch('/api/settings/candy-options', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ year: YEAR, options })
-        });
-        // The server's 400 says which row is wrong, e.g. "Row 3: image URL must start with https://"
-        const body = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
-
-        // Re-render with the server's ids so the next save keeps them
-        candyList.replaceChildren();
-        body.forEach(option => addCandyRow(option));
-        candyMessage.className = 'message success';
-        candyMessage.textContent = `✅ Saved ${body.length} candies. Phones pick it up on reload.`;
-      } catch (error) {
-        candyMessage.className = 'message error';
-        candyMessage.textContent = `⚠️ Save failed - ${failureLabel(error)}`;
       }
     });
   </script>

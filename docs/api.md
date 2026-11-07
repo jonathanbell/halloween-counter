@@ -13,21 +13,21 @@ authenticates. Everything not listed under "Admin endpoints" below is public.
 
 ## Event types
 
-Everything that happens is a row in `events`. The `type` CHECK constraint is
-the source of truth and currently allows:
+The application writes these event types to `events`:
 
 | `type`              | Written by                     | Extra columns |
 | ------------------- | ------------------------------ | ------------- |
 | `increment`         | `POST /api/counter`            | -             |
-| `vote`              | `POST /api/vote`               | `candy_type`  |
 | `effect_lightning`  | `POST /api/effects/lightning`  | -             |
 | `effect_candy_rain` | `POST /api/effects/candy-rain` | -             |
 | `game_score`        | `GameService`, when a game ends | `score`, `game_session_id`, `initials`, `avg_ms` |
 
 `game_score` is written server-side at game end, not by any HTTP endpoint,
 and is what `GET /api/leaderboard` lists. Rows written before Graveyard Bonk
-(V7) have no `initials` and are left off the leaderboard. Adding a type
-requires a Flyway migration - see `V6__game_score_type.sql`.
+(V7) have no `initials` and are left off the leaderboard. Existing databases
+delete historical vote rows and the voting schema in `V10__remove_candy_voting.sql`.
+Adding an event type requires a Flyway migration - see
+`V6__game_score_type.sql`.
 
 ## Public endpoints
 
@@ -59,7 +59,6 @@ EventSource subscription (SSE, no timeout). One JSON payload per message:
 
 ```json
 {"type":"increment","year":2026,"total":42,"initialCandyCount":300,"timestamp":"..."}
-{"type":"vote","year":2026,"total":42,"initialCandyCount":300,"timestamp":"..."}
 
 {"type":"effect_lightning","year":2026,"timestamp":"..."}
 {"type":"effect_candy_rain","year":2026,"timestamp":"..."}
@@ -73,7 +72,6 @@ EventSource subscription (SSE, no timeout). One JSON payload per message:
 
 Notes:
 
-- `total` is always the increment total, even on `vote` messages.
 - `initialCandyCount` rides along on count messages so supply changes made
   in settings reach every screen without a refresh.
 - The server sends an SSE comment (`: keep-alive`) every 15s. EventSource
@@ -110,37 +108,6 @@ HTTP 409 {"error": "game_active"}
 
 On success the event is persisted and broadcast over SSE.
 
-### `POST /api/vote`
-
-Public vote for favorite candy. Stored as an event with `type='vote'`.
-
-```json
-POST /api/vote
-{ "year": 2026, "candyType": "snickers", "voterId": "<uuid>" }
-```
-
-`voterId` is a per-phone UUID kept in localStorage. Only a voter's latest
-vote counts in `/api/stats`, so voting again changes the vote. It is
-optional; votes without one (including every row before V8) count once
-each. A malformed UUID is a 400.
-
-`candyType` must be an `id` from that year's options, otherwise:
-
-```json
-HTTP 400 {"error": "unknown_candy"}
-```
-
-### `GET /api/vote/options`
-
-The year's favorite-candy choices, in display order. Empty until the admin
-saves some for that year. `id` is what votes store; `imageUrl` is `null` or
-an `https://` URL, hotlinked as-is.
-
-```json
-GET /api/vote/options?year=2026
-[ { "id": "snickers", "label": "🍫 Snickers", "imageUrl": null } ]
-```
-
 ### `GET /api/stats`
 
 Aggregates for the charts. Cross-year via `?year=2025` etc.
@@ -149,7 +116,6 @@ Aggregates for the charts. Cross-year via `?year=2025` etc.
 GET /api/stats?year=2026
 {
   "total": 42,
-  "votes": { "snickers": 5, "m&ms": 3 },
   "histogram": [ { "minute": "2026-10-31T18:04:00Z", "count": 5 } ]
 }
 ```
@@ -209,21 +175,6 @@ Pushes a count snapshot to all SSE clients.
 POST /api/settings
 { "year": 2026, "initialCandyCount": 400, "currentTotal": 42 }
 ```
-
-### `PUT /api/settings/candy-options` (settings token)
-
-Replaces the year's whole candy list (at most 50). A row without `id` gets a
-slug of its label (`kit-kat`, then `kit-kat-2`); a row with one keeps it, so
-its votes survive a rename. Returns the saved list with ids filled in.
-
-```json
-PUT /api/settings/candy-options
-{ "year": 2026, "options": [ { "id": null, "label": "Kit Kat", "imageUrl": "https://..." } ] }
-```
-
-Bad input is a 400 naming the row, e.g.
-`{"error": "Row 3: image URL must start with https://"}`. Labels are 1-50
-characters; ids must be unique and at most 50.
 
 ### `POST /api/tokens/rotate` (settings token)
 

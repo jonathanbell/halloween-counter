@@ -119,10 +119,10 @@ status:
 tokens:
 	@ssh $(SSH_HOST) 'bash -s -- $(CONTAINER)' < scripts/print-tokens.sh
 
-# Before the night: delete the year's test taps, votes, effects and game
+# Before the night: delete the year's test taps, effects and game
 # scores, and zero its count adjustment. Shows what will go, makes you type
 # the year, then saves the deleted rows to gitignored backups/ (they carry
-# initials and voter ids). The year is checked here too because it lands in
+# game initials). The year is checked here too because it lands in
 # the remote command line
 reset-year:
 	@echo "$(YEAR)" | grep -Eq '^[0-9]{4}$$' || { echo "Usage: make reset-year YEAR=2026"; exit 1; }

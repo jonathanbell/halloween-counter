@@ -105,7 +105,7 @@
   text-shadow: 3px 3px 0 #000;
 }
 
-/* Viewer controls (game/stats cards, effects, vote). */
+/* Viewer controls (game/stats cards and effects). */
 .viewer-controls {
   width: 100%;
   display: flex;
@@ -182,57 +182,12 @@
   flex: 1;
 }
 
-.vote-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: center;
-}
-
-.vote-title,
 .control-title {
   width: 100%;
   font-size: var(--text-xs);
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--color-text-dim);
-}
-
-/* Shared by the counter page and /stats (CandyVote). auto-fill keeps 20+
-   candies in tidy rows instead of one stretched flex line */
-.vote-grid {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-  gap: var(--space-2);
-}
-
-.vote-btn {
-  min-height: 44px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-  cursor: pointer;
-}
-
-.vote-btn img {
-  width: var(--space-7);
-  height: var(--space-7);
-  object-fit: contain;
-}
-
-.vote-btn.voted {
-  background: var(--color-vote);
-  border-color: var(--color-vote);
-  color: #fff;
 }
 
 /* Graveyard Bonk live banner (viewer phones) ---------------------------- */

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wipe one year's events before the night starts: test taps, votes, effects
+# Wipe one year's events before the night starts: test taps, effects
 # and game scores. Runs ON the server, piped over ssh by `make reset-year`,
 # which asks for confirmation between the two modes.
 #
@@ -8,7 +8,7 @@
 #   delete  in one transaction: zero the year's count adjustment, delete its
 #           events and write the deleted rows to stdout as CSV (the backup)
 #
-# Settings (candy supply, vote options), tokens and other years stay.
+# Settings (candy supply), tokens and other years stay.
 
 set -euo pipefail
 

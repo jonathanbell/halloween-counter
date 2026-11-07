@@ -1,6 +1,5 @@
 package com.halloween.candy_counter.controller;
 
-import com.halloween.candy_counter.domain.CandyOption;
 import com.halloween.candy_counter.model.Settings;
 import com.halloween.candy_counter.repository.EventRepository;
 import com.halloween.candy_counter.service.SettingsService;
@@ -8,14 +7,12 @@ import com.halloween.candy_counter.service.SseBroadcaster;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -84,22 +81,6 @@ public class SettingsController {
         body.put("candyRemaining", Math.max(0, updated.getInitialCandyCount() - total));
         return ResponseEntity.ok(body);
     }
-
-    // Replaces the year's favorite-candy list; the public read is
-    // GET /api/vote/options
-    @PutMapping("/candy-options")
-    public ResponseEntity<?> setCandyOptions(@RequestBody CandyOptionsRequest request) {
-        Integer year = request.year() != null ? request.year() : 2026;
-        if (request.options() == null) return ResponseEntity.badRequest().body(Map.of("error", "options required"));
-
-        try {
-            return ResponseEntity.ok(settingsService.setCandyOptions(year, request.options()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    public record CandyOptionsRequest(Integer year, List<CandyOption> options) {}
 
     public record SettingsUpdateRequest(
         Integer year,

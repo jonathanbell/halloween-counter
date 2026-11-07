@@ -1,13 +1,8 @@
-import { useVote } from '../hooks/useVote';
-import { CandyVote } from './CandyVote';
-
 // Paused while Graveyard Bonk is live: lightning on the door means a bonk
 export type EffectsMode = 'on' | 'paused';
 
 export const ViewerControls = ({ effects = 'on' }: { effects?: EffectsMode }) => {
   const paused = effects === 'paused';
-
-  const { options, voted, vote } = useVote();
 
   const fireEffect = async (effect: 'lightning' | 'candy-rain') => {
     try {
@@ -47,12 +42,6 @@ export const ViewerControls = ({ effects = 'on' }: { effects?: EffectsMode }) =>
         </button>
       </div>
 
-      {options.length > 0 && (
-        <div className="vote-row">
-          <span className="vote-title">Vote for tonight's best candy</span>
-          <CandyVote options={options} voted={voted} onVote={vote} />
-        </div>
-      )}
     </div>
   );
 };

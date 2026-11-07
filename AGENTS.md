@@ -77,11 +77,11 @@ is a candidate for deletion.
         [stack-halloween :8080, internal network only]
             ├── SSE  (/api/events)          → counter/state
             ├── REST (/api/counter etc.)    → admin mutations
-            ├── REST to public effects/vote/stats
+            ├── REST to public effects/stats
             └── WebSocket (/ws/game)        → Graveyard Bonk (phone)
                 ↓
         [host PostgreSQL 16, 172.30.0.1:6542, `candy` DB]
-            ├── events   (increment/vote/effects/game_score, timestamped)
+            ├── events   (increment/effects/game_score, timestamped)
             ├── settings (year, initialCandy, countAdjustment)
             └── tokens   (runtime-rotated admin/settings tokens)
 ```
@@ -97,7 +97,7 @@ Browser surfaces:
 - **Projector** - `/?projection&token=<admin>` on the garage laptop.
   `?projection` hides all chrome; the token is what makes the spacebar
   shortcut able to increment.
-- **Phone/viewer** - `/` (counter, vote, effects), `/game` (Graveyard Bonk),
+- **Phone/viewer** - `/` (counter, effects), `/game` (Graveyard Bonk),
   `/stats` (charts + Hall of Fame). Each carries a small pill nav above the
   title linking to the other two; `/` also sells them with hero cards.
 - **Admin** - `/remote.html?token=<admin>` (big increment button),
@@ -129,14 +129,13 @@ com.halloween.candy_counter
 │   ├── SettingsController         GET/POST /api/settings (settings token)
 │   ├── TokenController            POST /api/tokens/rotate (settings token)
 │   ├── EffectsController          POST /api/effects/lightning,candy-rain
-│   ├── VoteController             POST /api/vote, GET /api/vote/options
 │   ├── StatsController            GET /api/stats (public chart data)
 │   └── LeaderboardController      GET /api/leaderboard (public)
 ├── service
-│   ├── CounterService             Increments + votes + state aggregation
+│   ├── CounterService             Increments + state aggregation
 │   ├── EffectService              Lightning / candy-rain cooldowns (350 /
 │   │                              250ms), refused while a game runs
-│   ├── SettingsService            Year settings, adjustment, candy options
+│   ├── SettingsService            Year settings and count adjustment
 │   ├── TokenService               Resolves tokens (DB row → env fallback),
 │   │                              generates rotations
 │   ├── SseBroadcaster             SSE subscribe + counter/game broadcast
@@ -153,7 +152,6 @@ com.halloween.candy_counter
 │   └── Token                      JPA entity for tokens table
 ├── domain
 │   ├── EventMessage               type/year/total/timestamp of SSE
-│   ├── CandyOption                one favorite-candy choice (id/label/image)
 │   ├── GameStatusEvent            game on/off, player initials, time left
 │   ├── GameSchedule               the 16 pops of one game (who, when, where)
 │   ├── BonkScore                  points per bonk (the only copy)
@@ -184,7 +182,6 @@ src/
 │   ├── useSSE.ts                  EventSource wrapper w/ listener registry
 │   ├── useCounter.ts              Server-synced candy count
 │   ├── useStats.ts                Server statistics (minute histogram math)
-│   ├── useVote.ts                 Candy options + one changeable vote/phone
 │   ├── useGame.ts                 Phone's WebSocket -> phoneReducer
 │   ├── useGameFeed.ts             Game as seen over SSE -> feedReducer
 │   └── useProjectionMode.ts       ?projection flag → hide chrome
@@ -196,8 +193,7 @@ src/
 │   ├── Game.tsx                   /game: initials, lockout, play, results
 │   ├── GameBroadcast.tsx          garage door during a game (lazy chunk)
 │   ├── LiveBanner.tsx             viewer phones: who is playing
-│   ├── ViewerControls.tsx         game/stats hero cards, effects, vote
-│   ├── CandyVote.tsx              candy vote grid, shared with StatsPage
+│   ├── ViewerControls.tsx         game/stats hero cards and effects
 │   ├── StatsPage.tsx              Recharts graphs for last-year/current-year
 │   └── HallOfFame.tsx             leaderboard card, #score-<id> highlight
 └── game                           Graveyard Bonk. Only lazy pages import the
@@ -312,16 +308,13 @@ restate it here; this section exists only to orient.
 ```
 Public   GET  /api/state          snapshot: count, candy, who is playing
          GET  /api/events         SSE subscription (counter + game + effects)
-         GET  /api/stats          totals, votes, histogram
+         GET  /api/stats          totals and histogram
          GET  /api/leaderboard    Graveyard Bonk scores for a year
-         POST /api/vote           favourite-candy vote
-         GET  /api/vote/options   the year's candy choices
          POST /api/effects/lightning | /api/effects/candy-rain
 
 Admin    POST /api/counter        increment            (admin token)
          GET  /api/settings       year config          (settings token)
          POST /api/settings       year config          (settings token)
-         PUT  /api/settings/candy-options  candy list  (settings token)
          POST /api/tokens/rotate  rotate a token       (settings token)
 
 Game     WS   /ws/game            Graveyard Bonk (phone)
@@ -354,8 +347,9 @@ V4__seed_2025_data.sql      2025 comparison row (346 total) + one event
 V5__tokens_table.sql        tokens table for runtime rotation
 V6__game_score_type.sql     adds 'game_score' to the events type constraint
 V7__game_score_initials.sql initials + avg_ms on events (leaderboard)
-V8__vote_voter_id.sql       voter_id on events (latest vote per phone wins)
-V9__candy_options.sql       candy_options JSON text on settings (vote choices)
+V8__vote_voter_id.sql       legacy per-phone vote ids
+V9__candy_options.sql       legacy candy voting options
+V10__remove_candy_voting.sql deletes vote rows and removes voting schema
 ```
 
 Local H2 also runs `V6_1__DropStaleH2TypeCheck`, a Java migration bean that
@@ -371,7 +365,7 @@ Three invariants that are easy to break and expensive to discover:
   survives. Any new total calculation must include the adjustment.
 - **The `events.type` CHECK constraint is the single source of valid event
   types.** It currently allows `increment`, `effect_lightning`,
-  `effect_candy_rain`, `vote`, `game_score`. Adding a type means a new
+  `effect_candy_rain`, `game_score`. Adding a type means a new
   Flyway migration - `V6` exists precisely because `game_score` was added
   after the fact.
 - **`"year"` and `"timestamp"` are quoted identifiers** everywhere - in the
@@ -389,18 +383,20 @@ row uses a synthetic 6pm PDT timestamp so it lands in one histogram bucket.
 Two suites. Both must pass before committing. Runners, including
 single-test selection, are in **Commands** above.
 
-**Backend** - `mvn test` (63 tests, mocked only, no Spring context boot):
+**Backend** - `mvn test` (60 tests, mocked only, no Spring context boot):
 
 ```
 src/test/java/com/halloween/candy_counter
+├── controller
+│   └── StatsControllerTest     stats response shape
 ├── domain
 │   ├── GameScheduleTest        schedule rules, checked over 300 seeds
 │   ├── BonkScoreTest           points per verdict
 │   └── InitialsTest            cleanup + BOO
 ├── service
-│   ├── CounterServiceTest      increment/vote aggregation + getState
+│   ├── CounterServiceTest      increment aggregation + getState
 │   ├── EffectServiceTest       cooldowns, refused during a game
-│   ├── SettingsServiceTest     update paths, candy option rules
+│   ├── SettingsServiceTest     update paths
 │   ├── GameServiceTest         start/deny, relays, judging, persistence
 │   └── LeaderboardServiceTest  record, rank, top N
 └── security
@@ -505,7 +501,7 @@ Day-to-day loop, the server's shape, and failure modes: `docs/deployment.md`.
    param (so a QR code carries one) or a Bearer header. The `tokens` table
    was added so a leaked token can be rotated on the night without a
    redeploy.
-6. **The events table records everything.** Every increment, vote, effect
+6. **The events table records activity.** Every increment, effect
    and finished game score is a row. That keeps statistics meaningful and
    avoids a second reporting path, at the cost of a table that grows with
    activity - which for one night a year is free.

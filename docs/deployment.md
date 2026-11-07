@@ -206,7 +206,7 @@ the old values first and set them back after.
 
 ## On the night: reset the year
 
-Rehearsal taps, votes, effects and game scores are real rows in `events`.
+Rehearsal taps, effects and game scores are real rows in `events`.
 Before the first trick-or-treater, wipe them:
 
 ```bash
@@ -216,7 +216,7 @@ make reset-year YEAR=2026
 It prints the year's rows by type and its count adjustment, makes you type
 the year, then in one transaction deletes the year's events and zeroes its
 `count_adjustment`. The deleted rows land in gitignored `backups/` as CSV.
-Candy supply, vote options, tokens and other years are untouched.
+Candy supply, tokens and other years are untouched.
 
 This is the one sanctioned delete. During the night, fix a miscount with
 "Set Total Count" (an adjustment), never by deleting events.

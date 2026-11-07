@@ -31,7 +31,7 @@
   --color-warning: #fbbf24;
   --color-danger: #dc2626;
   --color-alarm: #ff0000;          /* out-of-candy strikethrough + banner */
-  --color-vote: #9b59b6;              /* purple - vote widgets only */
+  --color-candy-purple: #9b59b6;
   --color-wood: #8b4513;              /* progress trough - reads as an object */
 
   /* Progress states keep their own ramp: the trough is a physical prop, not

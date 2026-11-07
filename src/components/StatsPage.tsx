@@ -5,8 +5,6 @@ import {
 import { colors } from '../theme';
 import { useSSE } from '../hooks/useSSE';
 import { fiveMinuteBuckets } from '../hooks/useStats';
-import { useVote } from '../hooks/useVote';
-import { CandyVote } from './CandyVote';
 import { PageShell } from './PageShell';
 import { HallOfFame } from './HallOfFame';
 import './StatsPage.css';
@@ -18,7 +16,6 @@ interface HistogramPoint {
 
 interface StatsData {
   total: number;
-  votes: Record<string, number>;
   histogram: HistogramPoint[];
 }
 
@@ -26,16 +23,10 @@ const YEAR_NOW = 2026;
 const YEAR_LAST = 2025;
 const SYNTHETIC_TIMESTAMP = '2025-10-31T18:00:00-07:00';
 
-// Horizontal vote bars: one row per candy, so 20+ options still read on a phone
-const VOTE_ROW_PX = 32;
-const VOTE_CHART_MIN_PX = 120;
-const VOTE_LABEL_PX = 110;
-
 export const StatsPage = () => {
   const [current, setCurrent] = useState<StatsData | null>(null);
   const [lastYear, setLastYear] = useState<StatsData | null>(null);
   const [showLastYear, setShowLastYear] = useState(false);
-  const { options, voted, recorded, vote } = useVote();
   const { lastMessage } = useSSE('/api/events');
 
   useEffect(() => {
@@ -53,11 +44,9 @@ export const StatsPage = () => {
     }).catch(err => console.error('stats fetch failed:', err));
   }, []);
 
-  // Live tallies: refetch this year's stats on every increment or vote.
-  // Refetch, not patch, so admin total overrides land correctly too.
-  // shortcut: one /api/stats call per message per viewer, debounce if the box ever strains
+  // Refetch so admin total overrides land correctly too.
   useEffect(() => {
-    if (lastMessage?.type !== 'increment' && lastMessage?.type !== 'vote') return;
+    if (lastMessage?.type !== 'increment') return;
     if (lastMessage.year !== YEAR_NOW) return;
 
     fetch(`/api/stats?year=${YEAR_NOW}`)
@@ -68,12 +57,6 @@ export const StatsPage = () => {
 
   const active = showLastYear ? lastYear : current;
   const year = showLastYear ? YEAR_LAST : YEAR_NOW;
-
-  // Labels come from this year's options; anything else (2025, a removed
-  // option) falls back to the raw id
-  const voteRows = Object.entries(active?.votes ?? {})
-    .map(([id, count]) => ({ name: options.find(o => o.id === id)?.label ?? id, count }))
-    .sort((a, b) => b.count - a.count);
 
   return (
     <PageShell active="stats" title="🎃 Candy Stats">
@@ -152,31 +135,7 @@ export const StatsPage = () => {
               </div>
             )}
 
-            <div className="card">
-              <h3>Favorite candy votes</h3>
-              <p className="card-desc"><strong>Everyone's pick for best candy. Cast yours below!</strong></p>
-              {voteRows.length > 0 ? (
-                <ResponsiveContainer width="100%" height={Math.max(VOTE_CHART_MIN_PX, voteRows.length * VOTE_ROW_PX)}>
-                  <BarChart data={voteRows} layout="vertical">
-                    <XAxis type="number" allowDecimals={false} tick={{ fill: colors.textDim }} />
-                    <YAxis type="category" dataKey="name" width={VOTE_LABEL_PX} tick={{ fill: colors.textDim }} />
-                    <Tooltip contentStyle={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 8 }} />
-                    <Bar dataKey="count" fill={colors.vote} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="stats-empty">No votes yet</div>
-              )}
-            </div>
           </>
-        )}
-
-        {!showLastYear && options.length > 0 && (
-          <div className="card stats-vote-row">
-            <span className="vote-label">Vote for favorite candy:</span>
-            <CandyVote options={options} voted={voted} onVote={vote} />
-            {recorded && <span className="vote-recorded">Your vote has been recorded.</span>}
-          </div>
         )}
       </div>
     </PageShell>

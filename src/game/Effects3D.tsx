@@ -7,7 +7,7 @@ import { useTimeScale } from './sceneTime';
 const GRAVITY = 9.8;
 
 // Candy colours borrowed from the UI palette
-const CANDY_COLORS = [colors.accent, colors.gold, colors.vote, colors.success, colors.danger];
+const CANDY_COLORS = [colors.accent, colors.gold, colors.candyPurple, colors.success, colors.danger];
 
 interface Particle {
   velocity: [number, number, number];

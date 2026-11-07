@@ -39,12 +39,6 @@ public class StatsController {
         long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
         stats.put("total", total);
 
-        Map<String, Long> votes = new HashMap<>();
-        for (Object[] row : eventRepository.countVotesByYear(year)) {
-            votes.put((String) row[0], (Long) row[1]);
-        }
-        stats.put("votes", votes);
-
         stats.put("histogram", buildHistogram(year));
 
         return ResponseEntity.ok(stats);

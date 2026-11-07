@@ -1,6 +1,6 @@
 # Halloween 2026 Candy Counter 🎃
 
-Spring Boot + Vite/React counter and game projected onto a garage door Halloween night. Live count, votes, interactive effects, and Graveyard Bonk, a three.js reaction game played on phones and broadcast on the garage door. Deploys as a Docker image to a shared cloud server behind `halloween-counter.jonathanbell.ca`; the garage laptop is just a browser logged in and displaying the counter.
+Spring Boot + Vite/React counter and game projected onto a garage door Halloween night. Live count, interactive effects, and Graveyard Bonk, a three.js reaction game played on phones and broadcast on the garage door. Deploys as a Docker image to a shared cloud server behind `halloween-counter.jonathanbell.ca`; the garage laptop is just a browser logged in and displaying the counter.
 
 ## Prerequisites
 
@@ -47,8 +47,8 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 Verify before committing:
 
 ```bash
-mvn test            # backend unit tests (30)
-npm run test:run    # frontend unit tests (29, vitest + jsdom)
+mvn test            # backend unit tests (60)
+npm run test:run    # frontend unit tests (95, vitest + jsdom)
 npm run lint        # ESLint
 npm run build       # TS check + bundle
 ```
@@ -62,7 +62,7 @@ that same output locally from Spring Boot.
 
 | Route                             | Audience          | Purpose                                                 |
 | --------------------------------- | ----------------- | ------------------------------------------------------- |
-| `/` (React)                       | viewer            | counter + candy supply + game/stats cards, vote/effects |
+| `/` (React)                       | viewer            | counter + candy supply + game/stats cards, effects      |
 | `/?projection&token=<admin>`      | projector browser | controls hidden; spacebar increments                    |
 | `/game` (React)                   | viewer phone      | Graveyard Bonk: initials, 30s game, score + rank        |
 | `/stats` (React)                  | viewer phone      | Recharts graphs, history, Graveyard Bonk Hall of Fame   |
@@ -80,7 +80,7 @@ jump to `/settings.html`.
 
 Full reference with payloads: `docs/api.md`.
 
-**Public**: `GET /api/state`, `GET /api/events` (SSE), `POST /api/effects/lightning|candy-rain`, `POST /api/vote`, `GET /api/stats`.
+**Public**: `GET /api/state`, `GET /api/events` (SSE), `POST /api/effects/lightning|candy-rain`, `GET /api/stats`.
 
 **Admin (token)**: `POST /api/counter`, `GET/POST /api/settings`, `POST /api/tokens/rotate`.
 
@@ -138,7 +138,7 @@ checklist); the short version:
    fullscreen. Spacebar increments as backup.
 1. Admin phone: scan the admin QR -> `/remote.html` big button. Tap once per
    trick-or-treater.
-1. Viewers: scan the public QR -> vote, fire lightning/candy rain (7s
+1. Viewers: scan the public QR -> fire lightning/candy rain (7s
    cooldown), play `/game` (takes over the projection for 30s), browse `/stats`.
 
 ### When something goes wrong

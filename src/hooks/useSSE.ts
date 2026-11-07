@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import type { GameFeedMessage } from '../game/protocol';
 
 export type SSEMessage =
-  | { type: 'increment' | 'effect_lightning' | 'effect_candy_rain' | 'vote'; year: number; total: number; initialCandyCount?: number; timestamp: string }
+  | { type: 'increment' | 'effect_lightning' | 'effect_candy_rain'; year: number; total: number; initialCandyCount?: number; timestamp: string }
   | GameFeedMessage;
 
 interface UseSSEReturn {

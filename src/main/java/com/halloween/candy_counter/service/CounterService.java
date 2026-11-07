@@ -5,14 +5,12 @@ import com.halloween.candy_counter.model.Settings;
 import com.halloween.candy_counter.repository.EventRepository;
 import com.halloween.candy_counter.repository.SettingsRepository;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class CounterService {
@@ -36,13 +34,6 @@ public class CounterService {
     public Event increment(Integer year) {
         Event event = new Event("increment", year);
         Event saved = eventRepository.save(event);
-        eventPublisher.publishEvent(new CounterUpdatedEvent(saved));
-        return saved;
-    }
-
-    @Transactional
-    public Event vote(Integer year, String candyType, @Nullable UUID voterId) {
-        Event saved = eventRepository.save(Event.vote(year, candyType, voterId));
         eventPublisher.publishEvent(new CounterUpdatedEvent(saved));
         return saved;
     }

@@ -11,7 +11,6 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -43,21 +42,6 @@ class CounterServiceTest {
         assertEquals("increment", result.getType());
         verify(eventRepository).save(argThat(e -> "increment".equals(e.getType()) && e.getYear() == 2026));
         verify(eventPublisher).publishEvent(any(CounterService.CounterUpdatedEvent.class));
-    }
-
-    @Test
-    @SuppressWarnings("null")
-    void voteSavesCandyTypeAndVoter() {
-        UUID voter = UUID.randomUUID();
-        Event saved = Event.vote(2026, "snickers", voter);
-        when(eventRepository.save(any(Event.class))).thenReturn(saved);
-
-        Event result = service.vote(2026, "snickers", voter);
-
-        assertEquals("vote", result.getType());
-        assertEquals("snickers", result.getCandyType());
-        verify(eventRepository).save(argThat(e -> "snickers".equals(e.getCandyType())
-            && voter.equals(e.getVoterId())));
     }
 
     @Test
