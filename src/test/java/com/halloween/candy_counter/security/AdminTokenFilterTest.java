@@ -40,30 +40,25 @@ class AdminTokenFilterTest {
 
     @Test
     void skipsNonAdminPath() throws Exception {
-        when(request.getRequestURI()).thenReturn("/api/events");
+        when(request.getServletPath()).thenReturn("/api/events");
         org.junit.jupiter.api.Assertions.assertTrue(filter.shouldNotFilter(request));
     }
 
     @Test
     void protectedPathsDoNotSkip() throws Exception {
-        when(request.getRequestURI()).thenReturn("/api/counter");
+        when(request.getServletPath()).thenReturn("/api/counter");
         org.junit.jupiter.api.Assertions.assertFalse(filter.shouldNotFilter(request));
 
-        when(request.getRequestURI()).thenReturn("/api/settings");
-        final HttpServletRequest request2 = request;
-        if (request2 != null) {
-            org.junit.jupiter.api.Assertions.assertFalse(filter.shouldNotFilter(request2));
-        } else {
-            // TODO handle null value
-        }
+        when(request.getServletPath()).thenReturn("/api/settings");
+        org.junit.jupiter.api.Assertions.assertFalse(filter.shouldNotFilter(request));
 
-        when(request.getRequestURI()).thenReturn("/api/tokens/rotate");
+        when(request.getServletPath()).thenReturn("/api/tokens/rotate");
         org.junit.jupiter.api.Assertions.assertFalse(filter.shouldNotFilter(request));
     }
 
     @Test
     void adminEndpointAccepted() throws Exception {
-        when(request.getRequestURI()).thenReturn("/api/counter");
+        when(request.getServletPath()).thenReturn("/api/counter");
         when(request.getParameter("token")).thenReturn("admin-token");
 
         filter.doFilterInternal(request, response, chain);
@@ -72,7 +67,7 @@ class AdminTokenFilterTest {
 
     @Test
     void wrongTokenBlocked() throws Exception {
-        when(request.getRequestURI()).thenReturn("/api/counter");
+        when(request.getServletPath()).thenReturn("/api/counter");
         when(request.getParameter("token")).thenReturn("wrong");
 
         StringWriter sw = new StringWriter();
@@ -87,7 +82,7 @@ class AdminTokenFilterTest {
     @Test
     void blankConfiguredTokenRejectsEverything() throws Exception {
         when(tokenService.resolveToken("admin")).thenReturn("");
-        when(request.getRequestURI()).thenReturn("/api/counter");
+        when(request.getServletPath()).thenReturn("/api/counter");
         when(request.getParameter("token")).thenReturn("");
 
         StringWriter sw = new StringWriter();
@@ -101,7 +96,7 @@ class AdminTokenFilterTest {
 
     @Test
     void settingsEndpointUsesSettingsToken() throws Exception {
-        when(request.getRequestURI()).thenReturn("/api/settings");
+        when(request.getServletPath()).thenReturn("/api/settings");
         when(request.getParameter("token")).thenReturn("settings-token");
 
         filter.doFilterInternal(request, response, chain);
@@ -110,7 +105,7 @@ class AdminTokenFilterTest {
 
     @Test
     void bearerHeaderAccepted() throws Exception {
-        when(request.getRequestURI()).thenReturn("/api/counter");
+        when(request.getServletPath()).thenReturn("/api/counter");
         when(request.getHeader("Authorization")).thenReturn("Bearer admin-token");
 
         filter.doFilterInternal(request, response, chain);
@@ -119,7 +114,7 @@ class AdminTokenFilterTest {
 
     @Test
     void tokenRotationRequiresSettingsToken() throws Exception {
-        when(request.getRequestURI()).thenReturn("/api/tokens/rotate");
+        when(request.getServletPath()).thenReturn("/api/tokens/rotate");
         when(request.getParameter("token")).thenReturn("settings-token");
 
         filter.doFilterInternal(request, response, chain);
@@ -128,7 +123,7 @@ class AdminTokenFilterTest {
 
     @Test
     void tokenRotationRejectsAdminToken() throws Exception {
-        when(request.getRequestURI()).thenReturn("/api/tokens/rotate");
+        when(request.getServletPath()).thenReturn("/api/tokens/rotate");
         when(request.getParameter("token")).thenReturn("admin-token");
 
         StringWriter sw = new StringWriter();

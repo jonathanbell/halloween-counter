@@ -10,6 +10,9 @@ target/
 .idea/
 *.iml
 .history
+.classpath
+.project
+.settings/
 
 # Node
 node_modules/

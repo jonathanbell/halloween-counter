@@ -25,12 +25,12 @@ public class EffectsController {
     }
 
     @PostMapping("/lightning")
-    public ResponseEntity<?> lightning(@RequestParam(defaultValue = "2026") Integer year) {
+    public ResponseEntity<?> lightning(@RequestParam Integer year) {
         return handleEffect(EffectService.EffectType.LIGHTNING, year);
     }
 
     @PostMapping("/candy-rain")
-    public ResponseEntity<?> candyRain(@RequestParam(defaultValue = "2026") Integer year) {
+    public ResponseEntity<?> candyRain(@RequestParam Integer year) {
         return handleEffect(EffectService.EffectType.CANDY_RAIN, year);
     }
 

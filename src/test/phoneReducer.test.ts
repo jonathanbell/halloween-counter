@@ -65,6 +65,16 @@ describe('phoneReducer', () => {
     expect(free.lock).toBeNull();
   });
 
+  it('unlocks on its own when the game_status(off) never arrives', () => {
+    const locked = run([
+      { type: 'connected' },
+      { type: 'feed', status: { active: true, initials: 'AB', endsInMs: 12000 }, now: 500 },
+    ]);
+
+    expect(phoneReducer(locked, { type: 'tick', now: 12499 }).lock).not.toBeNull();
+    expect(phoneReducer(locked, { type: 'tick', now: 12500 }).lock).toBeNull();
+  });
+
   it('is not locked out of its own game by the SSE echo', () => {
     const state = run([
       { type: 'connected' },

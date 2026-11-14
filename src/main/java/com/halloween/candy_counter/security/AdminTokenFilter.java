@@ -22,7 +22,7 @@ public class AdminTokenFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) throws ServletException {
-        String path = request.getRequestURI();
+        String path = adminPath(request);
         return !path.startsWith("/api/counter") &&
                !path.startsWith("/api/settings") &&
                !path.startsWith("/api/tokens");
@@ -36,7 +36,7 @@ public class AdminTokenFilter extends OncePerRequestFilter {
             ? authHeader.substring(7)
             : request.getParameter("token");
 
-        String path = request.getRequestURI();
+        String path = adminPath(request);
         // Token rotation requires the settings token (highest privilege)
         String tokenName = (path.startsWith("/api/settings") || path.startsWith("/api/tokens"))
             ? "settings" : "admin";
@@ -52,5 +52,11 @@ public class AdminTokenFilter extends OncePerRequestFilter {
         }
 
         chain.doFilter(request, response);
+    }
+
+    // The path Spring routes on: decoded, `;params` stripped. The raw URI let
+    // "/api;x/settings" or "/api/%73ettings" skip the check and still land
+    private static String adminPath(HttpServletRequest request) {
+        return request.getServletPath();
     }
 }

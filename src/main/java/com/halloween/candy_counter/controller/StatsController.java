@@ -1,17 +1,13 @@
 package com.halloween.candy_counter.controller;
 
-import com.halloween.candy_counter.model.Event;
-import com.halloween.candy_counter.repository.EventRepository;
-import com.halloween.candy_counter.repository.SettingsRepository;
+import com.halloween.candy_counter.service.CounterService;
+import com.halloween.candy_counter.service.SettingsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -19,48 +15,20 @@ import java.util.HashMap;
 @RequestMapping("/api/stats")
 public class StatsController {
 
-    private final EventRepository eventRepository;
-    private final SettingsRepository settingsRepository;
+    private final CounterService counterService;
+    private final SettingsService settingsService;
 
-    public StatsController(EventRepository eventRepository,
-                           SettingsRepository settingsRepository) {
-        this.eventRepository = eventRepository;
-        this.settingsRepository = settingsRepository;
+    public StatsController(CounterService counterService, SettingsService settingsService) {
+        this.counterService = counterService;
+        this.settingsService = settingsService;
     }
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getStats(@RequestParam(defaultValue = "2026") Integer year) {
+    public ResponseEntity<Map<String, Object>> getStats(@RequestParam Integer year) {
         Map<String, Object> stats = new HashMap<>();
-
-        Long eventTotal = eventRepository.countIncrementsByYear(year);
-        int adjustment = settingsRepository.findByYear(year)
-            .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
-            .orElse(0);
-        long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
-        stats.put("total", total);
-
-        stats.put("histogram", buildHistogram(year));
+        stats.put("total", settingsService.tally(year).total());
+        stats.put("histogram", counterService.histogram(year));
 
         return ResponseEntity.ok(stats);
-    }
-
-    private List<Map<String, Object>> buildHistogram(Integer year) {
-        List<Event> events = eventRepository.findIncrementsByYear(year);
-
-        Map<Instant, Long> minuteCounts = new HashMap<>();
-        for (Event event : events) {
-            Instant minute = event.getTimestamp().truncatedTo(ChronoUnit.MINUTES);
-            minuteCounts.merge(minute, 1L, (a, b) -> a + b);
-        }
-
-        return minuteCounts.entrySet().stream()
-            .sorted(Map.Entry.comparingByKey())
-            .map(entry -> {
-                Map<String, Object> point = new HashMap<>();
-                point.put("minute", entry.getKey().toString());
-                point.put("count", entry.getValue());
-                return point;
-            })
-            .toList();
     }
 }

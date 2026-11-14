@@ -22,7 +22,7 @@ public class TokenController {
     /**
      * Rotate a token. Protected by the settings token (highest privilege).
      * Body: {"name": "admin"} or {"name": "settings"}
-     * Returns the new token value — caller must re-print QR codes.
+     * Returns the new token value - caller must re-print QR codes.
      */
     @PostMapping("/rotate")
     public ResponseEntity<Map<String, String>> rotate(@RequestBody RotateRequest request) {

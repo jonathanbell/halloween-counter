@@ -192,8 +192,6 @@ and the static admin pages. The conventions - token discipline, the
 
 ## Repo notes
 
-- `server.js` is the **legacy Node backend, unused**. Spring Boot serves
-  everything. It is kept for reference only - do not extend it.
 - `public/fonts/digital-7.ttf` is freeware licensed for home use only
   (see the licence beside it). The app is served publicly, which is
   arguably outside that grant; a licensed or open seven-segment face would

@@ -21,7 +21,7 @@ public class LeaderboardController {
     // Public, like /api/stats. The service caps `limit` at 500
     @GetMapping
     public List<LeaderboardService.Entry> leaderboard(
-            @RequestParam(defaultValue = "2026") Integer year,
+            @RequestParam Integer year,
             @RequestParam(defaultValue = "500") Integer limit) {
         return leaderboardService.top(year, limit);
     }

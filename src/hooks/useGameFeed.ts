@@ -3,8 +3,7 @@ import { useSSE, type SSEMessage } from './useSSE';
 import type { FeedStatus } from '../game/phoneReducer';
 import type { GameFeedMessage } from '../game/protocol';
 import { feedReducer, initialFeedState, type FeedAction, type FeedState } from '../game/feedReducer';
-
-const CURRENT_YEAR = 2026;
+import { CURRENT_YEAR } from '../year';
 const TICK_MS = 100;
 
 const GAME_MESSAGES = new Set(['game_status', 'game_pop', 'game_bonk', 'game_tap', 'game_result']);

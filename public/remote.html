@@ -14,7 +14,8 @@
   <style>
     /* Page-specific only - cards, pills, readouts and tabs come from
        primitives.css, the same file the React app links. */
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    /* manipulation: no double-tap zoom, and every quick tap still clicks */
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
     body {
       font-family: var(--font-body);
@@ -209,7 +210,8 @@
     const token = AdminChrome.requireToken('halloweenAdminToken', 'admin');
     AdminChrome.renderTabs('remote');
 
-    const YEAR = 2026;
+    // The browser's own year, like the React app (src/year.ts)
+    const YEAR = new Date().getFullYear();
 
     if (!token) throw new Error('missing token');
 
@@ -340,14 +342,6 @@
         updateDisplay();
       }
     });
-
-    // Prevent zoom on double tap
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', (e) => {
-      const now = Date.now();
-      if (now - lastTouchEnd <= 300) e.preventDefault();
-      lastTouchEnd = now;
-    }, false);
 
     incrementButton.addEventListener('touchstart', () => {
       if ('vibrate' in navigator) navigator.vibrate(10);

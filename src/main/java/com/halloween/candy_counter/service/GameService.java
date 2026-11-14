@@ -8,6 +8,8 @@ import com.halloween.candy_counter.domain.GameSchedule;
 import com.halloween.candy_counter.domain.GameStatusEvent;
 import com.halloween.candy_counter.domain.Initials;
 import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
@@ -46,6 +48,8 @@ import java.util.random.RandomGenerator;
  */
 @Service
 public class GameService {
+
+    private static final Logger log = LoggerFactory.getLogger(GameService.class);
 
     // Late bonks from the last second still count; the phone stops at 30s
     static final long END_GRACE_MS = 1000;
@@ -286,7 +290,8 @@ public class GameService {
         if (game.shown.isEmpty()) return null;
         try {
             return leaderboardService.record(Year.now().getValue(), game.sessionId, score, game.initials, avgMs);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.warn("Leaderboard save failed for {} ({} pts)", game.initials, score, e);
             return null;
         }
     }

@@ -31,6 +31,10 @@ Adding an event type requires a Flyway migration - see
 
 ## Public endpoints
 
+Every endpoint that is per-year takes `year` explicitly (query param, or
+in the JSON body for `POST`s); a missing `year` is a 400. Clients send the
+browser's current year (`src/year.ts`).
+
 ### `GET /api/state`
 
 Snapshot without subscribing to the event feed.
@@ -91,7 +95,7 @@ Notes:
 
 ### `POST /api/effects/lightning` / `POST /api/effects/candy-rain`
 
-Trigger projection visuals. `year` query param optional (default for 2026).
+Trigger projection visuals. `year` query param required.
 Server-side cooldown per effect type, shared by all viewers: 350ms for
 lightning (under three flashes a second) and 250ms for candy rain. Within
 the cooldown:
@@ -163,7 +167,9 @@ GET /api/settings?year=2026
 }
 ```
 
-404 when no settings row exists for the year.
+A year with no settings row yet (a new Halloween) reads as the defaults:
+`initialCandyCount` 300, `countAdjustment` 0. The row is created on the
+first `POST`.
 
 ### `POST /api/settings` (settings token)
 

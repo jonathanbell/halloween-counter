@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { CounterState } from '../types';
 import { useSSE } from './useSSE';
+import { CURRENT_YEAR } from '../year';
 
-const CURRENT_YEAR = 2026;
 const API_BASE = '/api';
 
 // How long .animating / .glitching stay on the counter. Must outlast the
@@ -16,8 +16,6 @@ interface UseCounterReturn {
   candyRemaining: number;
   initialCandyCount: number;
   isAnimating: boolean;
-  isConnected: boolean;
-  connectionError: string | null;
   increment: () => Promise<void>;
   reset: () => void;
 }
@@ -29,7 +27,6 @@ export const useCounter = (): UseCounterReturn => {
     currentCount: 0,
     candyRemaining: 300,
     initialCandyCount: 300,
-    candyPerChild: 1,
   });
 
   const [isAnimating, setIsAnimating] = useState(false);
@@ -182,7 +179,5 @@ export const useCounter = (): UseCounterReturn => {
     increment,
     reset,
     isAnimating,
-    isConnected,
-    connectionError: error,
   };
 };

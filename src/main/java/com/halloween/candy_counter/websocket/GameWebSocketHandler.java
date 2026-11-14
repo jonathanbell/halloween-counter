@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.halloween.candy_counter.service.GameService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -13,6 +15,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 @Component
 public class GameWebSocketHandler extends TextWebSocketHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GameWebSocketHandler.class);
 
     private final GameService gameService;
     private final ObjectMapper objectMapper;
@@ -43,6 +47,8 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
                 default -> sendError(session, "unknown_type");
             }
         } catch (Exception e) {
+            // One line, no stack trace: any phone (or script) can send junk
+            log.warn("Game message failed: {}", e.toString());
             try {
                 sendError(session, "internal_error");
             } catch (Exception ignored) {}

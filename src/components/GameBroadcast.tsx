@@ -8,6 +8,7 @@ import {
 import { bonkLabel } from '../game/labels';
 import { isDecoy } from '../game/protocol';
 import { DECOY_BANNERS, gameTitle } from '../game/titles';
+import { CURRENT_YEAR } from '../year';
 import './GameBroadcast.css';
 
 // The garage door during a game: the same graveyard from a wide, low
@@ -19,7 +20,6 @@ import './GameBroadcast.css';
 //   results    score, title, rank (10s)
 //   top5       the year's Hall of Fame + a QR to play (15s), then back to the counter
 
-const CURRENT_YEAR = 2026;
 const TOP_COUNT = 5;
 const BANNER_MS = 1600;
 

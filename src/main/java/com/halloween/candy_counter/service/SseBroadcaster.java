@@ -1,8 +1,6 @@
 package com.halloween.candy_counter.service;
 
 import com.halloween.candy_counter.domain.EventMessage;
-import com.halloween.candy_counter.repository.EventRepository;
-import com.halloween.candy_counter.repository.SettingsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -11,14 +9,13 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.halloween.candy_counter.domain.GameSchedule;
 import com.halloween.candy_counter.domain.GameStatusEvent;
-import com.halloween.candy_counter.model.Settings;
 import jakarta.annotation.PreDestroy;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,14 +25,21 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class SseBroadcaster {
 
-    // Comment frames keep idle connections alive through proxies (Tailscale
-    // Funnel and friends kill silent streams); EventSource ignores them
+    // Comment frames keep idle connections alive through proxies and mobile
+    // networks that kill silent streams; EventSource ignores them
     private static final long HEARTBEAT_INTERVAL_MS = 15_000;
     private static final int MAX_SUBSCRIBERS = 100;
 
+    private static final CompletableFuture<Void> DONE = CompletableFuture.completedFuture(null);
+
     private final List<SseEmitter> subscribers = new CopyOnWriteArrayList<>();
-    private final EventRepository eventRepository;
-    private final SettingsRepository settingsRepository;
+
+    // Each screen gets its own send chain: messages arrive in the order they
+    // were sent (a bonk never beats its pop), and a stalled phone only holds
+    // up its own chain instead of a pool thread per message
+    private final Map<SseEmitter, CompletableFuture<Void>> lanes = new ConcurrentHashMap<>();
+
+    private final SettingsService settingsService;
     private final ObjectMapper objectMapper;
 
     private final ScheduledExecutorService heartbeatExecutor =
@@ -52,11 +56,8 @@ public class SseBroadcaster {
             return t;
         });
 
-    public SseBroadcaster(EventRepository eventRepository,
-                          SettingsRepository settingsRepository,
-                          ObjectMapper objectMapper) {
-        this.eventRepository = eventRepository;
-        this.settingsRepository = settingsRepository;
+    public SseBroadcaster(SettingsService settingsService, ObjectMapper objectMapper) {
+        this.settingsService = settingsService;
         this.objectMapper = objectMapper;
         heartbeatExecutor.scheduleWithFixedDelay(this::sendHeartbeats,
             HEARTBEAT_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, TimeUnit.MILLISECONDS);
@@ -72,11 +73,16 @@ public class SseBroadcaster {
         SseEmitter emitter = new SseEmitter(0L); // no timeout
         subscribers.add(emitter);
 
-        emitter.onCompletion(() -> subscribers.remove(emitter));
-        emitter.onTimeout(() -> subscribers.remove(emitter));
-        emitter.onError((ex) -> subscribers.remove(emitter));
+        emitter.onCompletion(() -> drop(emitter));
+        emitter.onTimeout(() -> drop(emitter));
+        emitter.onError((ex) -> drop(emitter));
 
         return emitter;
+    }
+
+    // Test hook: a recording emitter, without a servlet response behind it
+    void subscribeForTest(SseEmitter emitter) {
+        subscribers.add(emitter);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -84,13 +90,13 @@ public class SseBroadcaster {
         if (subscribers.isEmpty()) return;
 
         Integer year = event.getEvent().getYear();
-        CountState count = countState(year);
+        SettingsService.Tally tally = settingsService.tally(year);
 
         EventMessage envelope = new EventMessage(
             event.getEvent().getType(),
             year,
-            count.total(),
-            count.initialCandyCount(),
+            (int) tally.total(),
+            tally.initialCandyCount(),
             event.getEvent().getTimestamp()
         );
 
@@ -99,27 +105,12 @@ public class SseBroadcaster {
 
     public void broadcastCountSnapshot(Integer year) {
         if (subscribers.isEmpty()) return;
-        CountState count = countState(year);
-        EventMessage envelope = new EventMessage("increment", year, count.total(),
-            count.initialCandyCount(), Instant.now());
+        // initialCandyCount rides along on every count message so clients
+        // track supply changes from the settings page without a refresh
+        SettingsService.Tally tally = settingsService.tally(year);
+        EventMessage envelope = new EventMessage("increment", year, (int) tally.total(),
+            tally.initialCandyCount(), Instant.now());
         sendToSubscribers(envelope);
-    }
-
-    // initialCandyCount rides along on every count message so clients track
-    // supply changes from the settings page without a refresh
-    private record CountState(int total, int initialCandyCount) {}
-
-    private CountState countState(Integer year) {
-        Long eventTotal = eventRepository.countIncrementsByYear(year);
-        Optional<Settings> settings = settingsRepository.findByYear(year);
-        int adjustment = settings
-            .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
-            .orElse(0);
-        int initialCandy = settings
-            .map(s -> s.getInitialCandyCount() != null ? s.getInitialCandyCount() : 300)
-            .orElse(300);
-        long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
-        return new CountState((int) total, initialCandy);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -168,14 +159,22 @@ public class SseBroadcaster {
         }
 
         for (SseEmitter emitter : subscribers) {
-            CompletableFuture.runAsync(() -> {
-                try {
-                    emitter.send(payload);
-                } catch (Exception ignored) {
-                    subscribers.remove(emitter);
-                }
-            }, broadcastExecutor);
+            lanes.compute(emitter, (e, tail) -> (tail != null ? tail : DONE)
+                .thenRunAsync(() -> send(e, payload), broadcastExecutor));
         }
+    }
+
+    private void send(SseEmitter emitter, String payload) {
+        try {
+            emitter.send(payload);
+        } catch (Exception ignored) {
+            drop(emitter);
+        }
+    }
+
+    private void drop(SseEmitter emitter) {
+        subscribers.remove(emitter);
+        lanes.remove(emitter);
     }
 
     private void sendHeartbeats() {
@@ -183,7 +182,7 @@ public class SseBroadcaster {
             try {
                 emitter.send(SseEmitter.event().comment("keep-alive"));
             } catch (Exception ignored) {
-                subscribers.remove(emitter);
+                drop(emitter);
             }
         }
     }
@@ -196,5 +195,6 @@ public class SseBroadcaster {
             try { e.complete(); } catch (Exception ignored) {}
         }
         subscribers.clear();
+        lanes.clear();
     }
 }

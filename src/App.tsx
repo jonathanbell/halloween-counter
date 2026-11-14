@@ -108,17 +108,6 @@ function CounterPage() {
     }
   }, [lastMessage]);
 
-  // Log connection status to console
-  useEffect(() => {
-    if (counter.isConnected) {
-      console.log("✅ Connected to counter server");
-    } else if (counter.connectionError) {
-      console.log("❌ Server connection error:", counter.connectionError);
-    } else {
-      console.log("⏳ Connecting to server...");
-    }
-  }, [counter.isConnected, counter.connectionError]);
-
   useEffect(() => {
     // Projector-only shortcuts: a viewer's spacebar must not fire
     // increments, and Ctrl+R / Ctrl+F should keep their browser meanings
@@ -142,7 +131,8 @@ function CounterPage() {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.code === "Space") {
         e.preventDefault();
-        counter.increment();
+        // A held spacebar auto-repeats: one press is one visitor
+        if (!e.repeat) counter.increment();
       }
     };
 

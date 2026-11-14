@@ -117,6 +117,11 @@ function onFeed(state: PhoneState, status: FeedStatus, now: number): PhoneState 
 }
 
 function onTick(state: PhoneState, now: number): PhoneState {
+  // The game_status(off) never came (a locked phone drops its stream), so
+  // the lock runs out on its own. If that game is somehow still on, the
+  // server denies the start and sends a fresh lock
+  if (state.lock && now >= state.lock.endsAt) return { ...state, lock: null };
+
   const game = state.game;
   if (!game) return state;
 

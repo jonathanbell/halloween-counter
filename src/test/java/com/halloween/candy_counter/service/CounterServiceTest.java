@@ -28,7 +28,8 @@ class CounterServiceTest {
     @BeforeEach
     void setUp() {
         openMocks(this);
-        service = new CounterService(eventRepository, settingsRepository, eventPublisher, gameService);
+        SettingsService settingsService = new SettingsService(settingsRepository, eventRepository);
+        service = new CounterService(eventRepository, settingsService, eventPublisher, gameService);
     }
 
     @Test

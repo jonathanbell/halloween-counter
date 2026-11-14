@@ -77,6 +77,16 @@ describe('feedReducer', () => {
     expect(run([started, ended(2000)])).toEqual(initialFeedState);
   });
 
+  it('ends a game itself when the stream dropped and missed the end', () => {
+    const live = run([started, pop(0, 4, 100)]);
+
+    expect(feedReducer(live, { type: 'tick', now: 38000 }).phase).toBe('live');
+    expect(feedReducer(live, { type: 'tick', now: 38001 }).phase).toBe('replay');
+
+    // Nothing popped: straight back to the counter
+    expect(feedReducer(run([started]), { type: 'tick', now: 38001 })).toEqual(initialFeedState);
+  });
+
   it('lets a new game interrupt the results', () => {
     const results = run([started, pop(0, 4, 100), ended(31000), { type: 'tick', now: 31000 + REPLAY_MS }]);
     expect(results.phase).toBe('results');

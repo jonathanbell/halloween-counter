@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { StatsData } from '../types';
-
-const YEAR = 2026;
+import { CURRENT_YEAR } from '../year';
 
 // Any count jump larger than this is a resync (initial state fetch, admin
 // adjustment), not real visitors walking up - don't fabricate timestamps
@@ -34,7 +33,7 @@ export const useStats = (currentCount: number, candyRemaining: number, initialCa
   const prevCountRef = useRef<number | null>(null);
 
   useEffect(() => {
-    fetch(`/api/stats?year=${YEAR}`)
+    fetch(`/api/stats?year=${CURRENT_YEAR}`)
       .then(r => r.json())
       .then(stats => {
         const seededTimestamps: number[] = [];
@@ -102,8 +101,6 @@ export const useStats = (currentCount: number, candyRemaining: number, initialCa
       candiesGivenPastFiveMinutes,
       averageTimeBetween,
       candyDepletionRate,
-      startTime,
-      timestamps,
     };
     // tick is a deliberate dep: it forces the time-window math to re-run
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -30,7 +30,6 @@ interface LightningCanvasProps {
 
 export const LightningCanvas = memo(({ triggerOnIncrement, externalTrigger, aimedStrike, weather = 'stormy' }: LightningCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>(0);
   const lastStrikeRef = useRef<number>(0);
 
   const createBranch = (
@@ -145,12 +144,10 @@ export const LightningCanvas = memo(({ triggerOnIncrement, externalTrigger, aime
         drawBranch(ctx, mainBolt, opacity);
         ctx.restore();
 
+        // No frame request is how a strike stops. Never cancel a shared
+        // frame id: that froze a newer, overlapping strike mid-fade
         opacity -= fadeSpeed;
-        animationRef.current = requestAnimationFrame(animate);
-      } else {
-        if (animationRef.current) {
-          cancelAnimationFrame(animationRef.current);
-        }
+        requestAnimationFrame(animate);
       }
     };
 
@@ -196,8 +193,6 @@ export const LightningCanvas = memo(({ triggerOnIncrement, externalTrigger, aime
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
     createLightning(canvas, ctx);
     lastStrikeRef.current = Date.now();
   }, [externalTrigger]); // eslint-disable-line react-hooks/exhaustive-deps

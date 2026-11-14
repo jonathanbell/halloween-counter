@@ -7,6 +7,7 @@ import { useSSE } from '../hooks/useSSE';
 import { fiveMinuteBuckets } from '../hooks/useStats';
 import { PageShell } from './PageShell';
 import { HallOfFame } from './HallOfFame';
+import { CURRENT_YEAR, FIRST_YEAR } from '../year';
 import './StatsPage.css';
 
 interface HistogramPoint {
@@ -19,59 +20,54 @@ interface StatsData {
   histogram: HistogramPoint[];
 }
 
-const YEAR_NOW = 2026;
-const YEAR_LAST = 2025;
-const SYNTHETIC_TIMESTAMP = '2025-10-31T18:00:00-07:00';
+// Every Halloween on record, oldest first: 2025, 2026, ... this year
+const YEARS = Array.from({ length: CURRENT_YEAR - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i);
+
+// The first year has a total but no taps: draw it as one bar at 6pm PDT
+const SYNTHETIC_TIMESTAMP = `${FIRST_YEAR}-10-31T18:00:00-07:00`;
+
+const fetchStats = (year: number): Promise<StatsData> =>
+  fetch(`/api/stats?year=${year}`)
+    .then(r => r.json())
+    .then((stats: StatsData) => year === FIRST_YEAR && stats.total > 0
+      ? { ...stats, histogram: [{ minute: SYNTHETIC_TIMESTAMP, count: stats.total }] }
+      : stats);
 
 export const StatsPage = () => {
-  const [current, setCurrent] = useState<StatsData | null>(null);
-  const [lastYear, setLastYear] = useState<StatsData | null>(null);
-  const [showLastYear, setShowLastYear] = useState(false);
+  const [byYear, setByYear] = useState<Record<number, StatsData>>({});
+  const [year, setYear] = useState(CURRENT_YEAR);
   const { lastMessage } = useSSE('/api/events');
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/stats?year=${YEAR_NOW}`).then(r => r.json()),
-      fetch(`/api/stats?year=${YEAR_LAST}`).then(r => r.json()),
-    ]).then(([now, last]) => {
-      setCurrent(now);
-
-      // Synthesize last year's histogram: one bucket at 6pm PDT
-      if (last.total > 0) {
-        last.histogram = [{ minute: SYNTHETIC_TIMESTAMP, count: last.total }];
-      }
-      setLastYear(last);
-    }).catch(err => console.error('stats fetch failed:', err));
+    Promise.all(YEARS.map(fetchStats))
+      .then(all => setByYear(Object.fromEntries(YEARS.map((y, i) => [y, all[i]]))))
+      .catch(err => console.error('stats fetch failed:', err));
   }, []);
 
   // Refetch so admin total overrides land correctly too.
   useEffect(() => {
     if (lastMessage?.type !== 'increment') return;
-    if (lastMessage.year !== YEAR_NOW) return;
+    if (lastMessage.year !== CURRENT_YEAR) return;
 
-    fetch(`/api/stats?year=${YEAR_NOW}`)
-      .then(r => r.json())
-      .then(setCurrent)
+    fetchStats(CURRENT_YEAR)
+      .then(stats => setByYear(prev => ({ ...prev, [CURRENT_YEAR]: stats })))
       .catch(err => console.error('stats refresh failed:', err));
   }, [lastMessage]);
 
-  const active = showLastYear ? lastYear : current;
-  const year = showLastYear ? YEAR_LAST : YEAR_NOW;
+  const active = byYear[year];
+  const loaded = YEARS.every(y => byYear[y]);
 
   return (
     <PageShell active="stats" title="🎃 Candy Stats">
       <div className="stats-page">
         <HallOfFame year={year} />
 
-        {current && lastYear && (
+        {loaded && (
           <div className="card">
             <h3>Total trick-or-treaters by year</h3>
             <p className="card-desc">How many customers served year over year</p>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={[
-                { year: String(YEAR_LAST), total: lastYear.total },
-                { year: String(YEAR_NOW), total: current.total },
-              ]}>
+              <BarChart data={YEARS.map(y => ({ year: String(y), total: byYear[y].total }))}>
                 <XAxis dataKey="year" tick={{ fill: colors.textDim }} />
                 <YAxis tick={{ fill: colors.textDim }} />
                 <Tooltip contentStyle={{ background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: 8 }} />
@@ -82,24 +78,21 @@ export const StatsPage = () => {
         )}
 
         <div className="year-toggle">
-          <button
-            className={`btn btn-ghost year-btn ${!showLastYear ? 'selected' : ''}`}
-            onClick={() => setShowLastYear(false)}
-          >
-            {YEAR_NOW}
-          </button>
-          <button
-            className={`btn btn-ghost year-btn ${showLastYear ? 'selected' : ''}`}
-            onClick={() => setShowLastYear(true)}
-          >
-            {YEAR_LAST}
-          </button>
+          {[...YEARS].reverse().map(y => (
+            <button
+              key={y}
+              className={`btn btn-ghost year-btn ${y === year ? 'selected' : ''}`}
+              onClick={() => setYear(y)}
+            >
+              {y}
+            </button>
+          ))}
         </div>
 
         {active && (
           <>
             <div className="card stats-total">
-              <div className="stats-total-label">Current {year} Count</div>
+              <div className="stats-total-label">{year} Count</div>
               <div className="stats-total-value readout">{active.total}</div>
             </div>
 

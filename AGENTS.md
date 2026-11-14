@@ -56,11 +56,6 @@ handling increment/state/SSE. It was rewritten as a Spring Boot application:
 6. A shared CSS token + primitives layer used by React *and* the static
    admin pages
 
-`server.js` still sits in the repo root but is **legacy and unused** - the
-Spring Boot app serves everything. Do not extend it, do not integrate it,
-do not read it for behaviour. It is kept only as a historical reference and
-is a candidate for deletion.
-
 ---
 
 ## 2. System Architecture
@@ -132,10 +127,11 @@ com.halloween.candy_counter
 │   ├── StatsController            GET /api/stats (public chart data)
 │   └── LeaderboardController      GET /api/leaderboard (public)
 ├── service
-│   ├── CounterService             Increments + state aggregation
+│   ├── CounterService             Increments, state, per-minute histogram
 │   ├── EffectService              Lightning / candy-rain cooldowns (350 /
 │   │                              250ms), refused while a game runs
-│   ├── SettingsService            Year settings and count adjustment
+│   ├── SettingsService            Year settings, count adjustment, and
+│   │                              `tally`: the only total computation
 │   ├── TokenService               Resolves tokens (DB row → env fallback),
 │   │                              generates rotations
 │   ├── SseBroadcaster             SSE subscribe + counter/game broadcast
@@ -175,6 +171,7 @@ Frontend (`src/`):
 ```
 src/
 ├── App.tsx                        Cheap path router + overlay logic
+├── year.ts                        CURRENT_YEAR (browser clock), FIRST_YEAR
 ├── theme.ts                       Design tokens for JS consumers (Recharts,
 │                                  three.js materials). Mirrors
 │                                  public/theme.css; a test guards parity.
@@ -360,9 +357,9 @@ there and `game_score` inserts failed locally. Postgres never needs it.
 Three invariants that are easy to break and expensive to discover:
 
 - **`currentTotal = COUNT(increment events) + settings.count_adjustment`**
-  (`EventRepository.countIncrementsByYear`). Overrides from "Set Total
-  Count" are written as an adjustment, never by deleting events, so history
-  survives. Any new total calculation must include the adjustment.
+  (`SettingsService.tally`, the only place it is computed). Overrides from
+  "Set Total Count" are written as an adjustment, never by deleting events,
+  so history survives. Read totals through `tally`, never recompute them.
 - **The `events.type` CHECK constraint is the single source of valid event
   types.** It currently allows `increment`, `effect_lightning`,
   `effect_candy_rain`, `game_score`. Adding a type means a new
@@ -383,7 +380,7 @@ row uses a synthetic 6pm PDT timestamp so it lands in one histogram bucket.
 Two suites. Both must pass before committing. Runners, including
 single-test selection, are in **Commands** above.
 
-**Backend** - `mvn test` (60 tests, mocked only, no Spring context boot):
+**Backend** - `mvn test` (63 tests, mocked only, no Spring context boot):
 
 ```
 src/test/java/com/halloween/candy_counter
@@ -396,14 +393,15 @@ src/test/java/com/halloween/candy_counter
 ├── service
 │   ├── CounterServiceTest      increment aggregation + getState
 │   ├── EffectServiceTest       cooldowns, refused during a game
-│   ├── SettingsServiceTest     update paths
+│   ├── SettingsServiceTest     tally defaults, adjustment, update paths
+│   ├── SseBroadcasterTest      per-screen message order
 │   ├── GameServiceTest         start/deny, relays, judging, persistence
 │   └── LeaderboardServiceTest  record, rank, top N
 └── security
     └── AdminTokenFilterTest    token accept/reject per endpoint
 ```
 
-**Frontend** - `npm run test:run` (95 tests, vitest + jsdom; config in
+**Frontend** - `npm run test:run` (99 tests, vitest + jsdom; config in
 `vite.config.ts`, setup in `src/test/setup.ts`):
 
 ```
@@ -417,6 +415,7 @@ src/test
 ├── feedReducer.test.ts    garage door phases, replay target
 ├── titles.test.ts         speed titles and decoy roasts
 ├── HallOfFame.test.tsx    ranks, ties, #score-<id> highlight
+├── StatsPage.test.tsx     one toggle per year since 2025, 2025's total
 ├── DroolingRain.test.tsx  one emoji per visitor, 200 cap
 └── useStats.test.ts       5-minute handout rate buckets
 ```
@@ -602,7 +601,6 @@ Day-to-day loop, the server's shape, and failure modes: `docs/deployment.md`.
   and it must outlast the unluckiest roll (`--glitch-surge` at its top
   `--surge-scale`, after the largest `--glitch-jitter`) or that well's
   animation is cut off mid-flight.
-- **Don't extend `server.js`.** It is dead code.
 
 ---
 

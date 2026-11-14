@@ -75,11 +75,6 @@ public class Event {
     public String getInitials() { return initials; }
     public Integer getAvgMs() { return avgMs; }
 
-    public void setYear(Integer year) { this.year = year; }
-    public void setType(String type) { this.type = type; }
-    public void setGameSessionId(UUID gameSessionId) { this.gameSessionId = gameSessionId; }
-    public void setScore(Integer score) { this.score = score; }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

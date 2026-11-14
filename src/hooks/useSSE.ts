@@ -9,7 +9,6 @@ interface UseSSEReturn {
   lastMessage: SSEMessage | null;
   isConnected: boolean;
   error: string | null;
-  reconnectAttempts: number;
   registerListener: (cb: (msg: SSEMessage) => void) => () => void;
 }
 
@@ -157,7 +156,6 @@ export const useSSE = (url: string): UseSSEReturn => {
     lastMessage,
     isConnected: status.isConnected,
     error: status.error,
-    reconnectAttempts: status.reconnectAttempts,
     registerListener,
   };
 };

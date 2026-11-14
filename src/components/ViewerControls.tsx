@@ -1,3 +1,5 @@
+import { CURRENT_YEAR } from '../year';
+
 // Paused while Graveyard Bonk is live: lightning on the door means a bonk
 export type EffectsMode = 'on' | 'paused';
 
@@ -6,7 +8,7 @@ export const ViewerControls = ({ effects = 'on' }: { effects?: EffectsMode }) =>
 
   const fireEffect = async (effect: 'lightning' | 'candy-rain') => {
     try {
-      await fetch(`/api/effects/${effect}?year=2026`, { method: 'POST' });
+      await fetch(`/api/effects/${effect}?year=${CURRENT_YEAR}`, { method: 'POST' });
     } catch (err) {
       console.error('Effect failed:', err);
     }

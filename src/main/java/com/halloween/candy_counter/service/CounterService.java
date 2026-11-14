@@ -1,31 +1,31 @@
 package com.halloween.candy_counter.service;
 
 import com.halloween.candy_counter.model.Event;
-import com.halloween.candy_counter.model.Settings;
 import com.halloween.candy_counter.repository.EventRepository;
-import com.halloween.candy_counter.repository.SettingsRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class CounterService {
 
     private final EventRepository eventRepository;
-    private final SettingsRepository settingsRepository;
+    private final SettingsService settingsService;
     private final ApplicationEventPublisher eventPublisher;
     private final GameService gameService;
 
     public CounterService(EventRepository eventRepository,
-                          SettingsRepository settingsRepository,
+                          SettingsService settingsService,
                           ApplicationEventPublisher eventPublisher,
                           GameService gameService) {
         this.eventRepository = eventRepository;
-        this.settingsRepository = settingsRepository;
+        this.settingsService = settingsService;
         this.eventPublisher = eventPublisher;
         this.gameService = gameService;
     }
@@ -55,27 +55,40 @@ public class CounterService {
     }
 
     public Map<String, Object> getState(Integer year) {
-        Long eventTotal = eventRepository.countIncrementsByYear(year);
-        Optional<Settings> settings = settingsRepository.findByYear(year);
-        int adjustment = settings
-            .map(s -> s.getCountAdjustment() != null ? s.getCountAdjustment() : 0)
-            .orElse(0);
-        int initialCandy = settings
-            .map(s -> s.getInitialCandyCount() != null ? s.getInitialCandyCount() : 300)
-            .orElse(300);
-        long total = (eventTotal != null ? eventTotal : 0L) + adjustment;
+        SettingsService.Tally tally = settingsService.tally(year);
 
         Map<String, Object> state = new HashMap<>();
         state.put("year", year);
-        state.put("currentCount", total);
-        state.put("initialCandyCount", initialCandy);
-        state.put("candyRemaining", Math.max(0, initialCandy - total));
+        state.put("currentCount", tally.total());
+        state.put("initialCandyCount", tally.initialCandyCount());
+        state.put("candyRemaining", tally.candyRemaining());
         // Lets a projection or phone refreshed mid-game catch up: who is
         // playing and how long is left (null / 0 when no game is running)
         state.put("gameActive", gameService.isGameActive());
         state.put("gameInitials", gameService.activeInitials());
         state.put("gameEndsInMs", gameService.endsInMs());
         return state;
+    }
+
+    // Increments per minute, oldest first: [{minute: "2026-10-31T18:04:00Z", count: 5}]
+    public List<Map<String, Object>> histogram(Integer year) {
+        List<Event> events = eventRepository.findIncrementsByYear(year);
+
+        Map<Instant, Long> minuteCounts = new HashMap<>();
+        for (Event event : events) {
+            Instant minute = event.getTimestamp().truncatedTo(ChronoUnit.MINUTES);
+            minuteCounts.merge(minute, 1L, (a, b) -> a + b);
+        }
+
+        return minuteCounts.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .map(entry -> {
+                Map<String, Object> point = new HashMap<>();
+                point.put("minute", entry.getKey().toString());
+                point.put("count", entry.getValue());
+                return point;
+            })
+            .toList();
     }
 
     // Published after the save; AFTER_COMMIT listeners re-read the total

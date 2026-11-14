@@ -2,9 +2,13 @@ package com.halloween.candy_counter.controller;
 
 import com.halloween.candy_counter.repository.EventRepository;
 import com.halloween.candy_counter.repository.SettingsRepository;
+import com.halloween.candy_counter.service.CounterService;
+import com.halloween.candy_counter.service.GameService;
+import com.halloween.candy_counter.service.SettingsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -13,6 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.openMocks;
 
@@ -26,7 +31,10 @@ class StatsControllerTest {
     @BeforeEach
     void setUp() {
         openMocks(this);
-        controller = new StatsController(eventRepository, settingsRepository);
+        SettingsService settingsService = new SettingsService(settingsRepository, eventRepository);
+        CounterService counterService = new CounterService(
+            eventRepository, settingsService, mock(ApplicationEventPublisher.class), mock(GameService.class));
+        controller = new StatsController(counterService, settingsService);
     }
 
     @Test

@@ -15,7 +15,6 @@ src/main/resources/static
 # Not part of any stage
 docs
 scripts
-server.js
 compose.smoke.yml
 Makefile
 *.md

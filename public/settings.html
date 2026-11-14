@@ -126,7 +126,8 @@
     const token = AdminChrome.requireToken('halloweenSettingsToken', 'settings');
     AdminChrome.renderTabs('settings');
 
-    const YEAR = 2026;
+    // The browser's own year, like the React app (src/year.ts)
+    const YEAR = new Date().getFullYear();
 
     if (!token) throw new Error('missing token');
 

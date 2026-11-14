@@ -9,9 +9,9 @@ import { emptyTally, type DecoyTally } from './titles';
 //     ^                                             │ game_status(off) or game_result
 //     └── top5 <─15s── results <─10s── replay <────┘ (replay skipped if nothing popped)
 //
-// A new game_status(on) interrupts any phase. SSE messages can arrive out
-// of order (the server sends each one on its own thread), so the end of a
-// game is whichever of game_status(off) / game_result lands first.
+// A new game_status(on) interrupts any phase. The end of a game is whichever
+// of game_status(off) / game_result lands first, or the clock running out
+// plus MISSED_END_MS when the stream dropped and neither arrived.
 
 export type DoorPhase = 'idle' | 'countdown' | 'live' | 'replay' | 'results' | 'top5';
 
@@ -20,6 +20,9 @@ export const REPLAY_TIME_SCALE = 0.25;
 export const RESULTS_MS = 10_000;
 export const TOP5_MS = 15_000;
 export const LABEL_MS = 1100;
+
+// Past the server's own 1s grace for the last bonk, plus slack for a slow save
+const MISSED_END_MS = 5000;
 
 // Defaults for a door that joins mid-game from /api/state, which does not
 // carry them (game_status does)
@@ -193,6 +196,7 @@ function endGame(state: FeedState, now: number): FeedState {
 }
 
 function onTick(state: FeedState, now: number): FeedState {
+  if (PLAYING.includes(state.phase) && now > state.endsAt + MISSED_END_MS) return endGame(state, now);
   if (state.phase === 'live') return escapePops(state, now);
   if (state.phaseEndsAt === 0 || now < state.phaseEndsAt) return state;
 

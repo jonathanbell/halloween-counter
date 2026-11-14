@@ -34,7 +34,7 @@ public class CounterController {
     }
 
     @GetMapping("/state")
-    public Map<String, Object> state(@RequestParam(defaultValue = "2026") Integer year) {
+    public Map<String, Object> state(@RequestParam Integer year) {
         return counterService.getState(year);
     }
 
