@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 
@@ -18,18 +19,41 @@ import static org.mockito.MockitoAnnotations.openMocks;
 
 class CounterServiceTest {
 
+    private static final String OPENS_AT = "2027-10-31T07:00:00Z";
+
     @Mock EventRepository eventRepository;
     @Mock SettingsRepository settingsRepository;
     @Mock ApplicationEventPublisher eventPublisher;
     @Mock GameService gameService;
+    @Mock FreezeService freezeService;
 
     CounterService service;
 
     @BeforeEach
     void setUp() {
         openMocks(this);
+        when(freezeService.opensAt()).thenReturn(Instant.parse(OPENS_AT));
         SettingsService settingsService = new SettingsService(settingsRepository, eventRepository);
-        service = new CounterService(eventRepository, settingsService, eventPublisher, gameService);
+        service = new CounterService(eventRepository, settingsService, eventPublisher, gameService, freezeService);
+    }
+
+    @Test
+    void incrementRefusedWhileFrozen() {
+        doThrow(new FrozenException()).when(freezeService).requireOpen();
+
+        assertThrows(FrozenException.class, () -> service.increment(2026));
+        verifyNoInteractions(eventRepository, eventPublisher);
+    }
+
+    @Test
+    void getStateReportsTheFreeze() {
+        when(settingsRepository.findByYear(2026)).thenReturn(Optional.empty());
+        when(freezeService.isFrozen()).thenReturn(true);
+
+        Map<String, Object> state = service.getState(2026);
+
+        assertEquals(true, state.get("frozen"));
+        assertEquals(OPENS_AT, state.get("opensAt"));
     }
 
     @Test

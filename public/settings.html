@@ -60,6 +60,7 @@
     .form-group { display: flex; flex-direction: column; gap: var(--space-2); }
     .button-group { display: flex; gap: var(--space-3); }
     .button-group .btn { flex: 1; }
+    .lock-actions { margin-top: var(--space-4); }
 
     .message:empty { display: none; }
 
@@ -117,6 +118,22 @@
       </div>
     </form>
 
+    <!-- Any day but Oct 31 the counter, game and effects refuse writes -->
+    <div class="card">
+      <h3 class="sec-head">Off-season lock</h3>
+      <div class="values">
+        <div class="value">
+          <span>Counter, game and effects</span>
+          <span id="freezeDisplay">Loading…</span>
+        </div>
+      </div>
+
+      <div class="button-group lock-actions">
+        <button type="button" class="btn btn-ghost" id="unlockButton">Unlock for testing</button>
+        <button type="button" class="btn btn-danger" id="lockButton">Lock now</button>
+      </div>
+    </div>
+
     <div id="message" class="message"></div>
   </div>
 
@@ -159,6 +176,72 @@
     }
 
     loadCurrentState();
+
+    // What the server answers once Halloween is over and the year is sealed
+    const HTTP_LOCKED = 423;
+
+    const freezeDisplay = document.getElementById('freezeDisplay');
+
+    function showFreeze(frozen) {
+      freezeDisplay.textContent = frozen ? '🔒 Frozen' : '🔓 Open';
+    }
+
+    // Public endpoint: the same answer every other page gets
+    function loadFreeze() {
+      fetch(`/api/state?year=${YEAR}`)
+        .then(r => r.json())
+        .then(state => showFreeze(state.frozen))
+        .catch(error => { freezeDisplay.textContent = failureLabel(error); });
+    }
+
+    loadFreeze();
+
+    // Midnight and an unlock running out arrive here, as on every other
+    // page. Reloaded on reconnect: a sleeping phone missed the message
+    const freezeFeed = new EventSource('/api/events');
+    freezeFeed.onopen = loadFreeze;
+    freezeFeed.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'freeze') showFreeze(data.frozen);
+    };
+
+    // action: 'unlock' | 'lock'
+    async function setLock(action) {
+      const messageEl = document.getElementById('message');
+
+      try {
+        const response = await fetch(`/api/settings/${action}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.status === HTTP_LOCKED) {
+          throw new Error(`Sealed until Jan 1: a test would land in ${YEAR}'s real data`);
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const state = await response.json();
+        showFreeze(state.frozen);
+
+        const until = state.unlockedUntil && new Date(state.unlockedUntil)
+          .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+        messageEl.className = 'message success';
+        messageEl.textContent = until ? `🔓 Unlocked until ${until}` : '🔒 Locked';
+      } catch (error) {
+        messageEl.className = 'message error';
+        messageEl.textContent = `⚠️ ${failureLabel(error)}`;
+        console.error('Error:', error);
+      }
+
+      setTimeout(() => {
+        messageEl.className = 'message';
+        messageEl.textContent = '';
+      }, 5000);
+    }
+
+    document.getElementById('unlockButton').addEventListener('click', () => setLock('unlock'));
+    document.getElementById('lockButton').addEventListener('click', () => setLock('lock'));
 
     document.getElementById('settingsForm').addEventListener('submit', async (e) => {
       e.preventDefault();

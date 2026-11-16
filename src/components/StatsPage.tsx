@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { colors } from '../theme';
+import { useFreeze } from '../hooks/useFreeze';
 import { useSSE } from '../hooks/useSSE';
 import { fiveMinuteBuckets } from '../hooks/useStats';
 import { PageShell } from './PageShell';
@@ -38,6 +39,9 @@ export const StatsPage = () => {
   const [year, setYear] = useState(CURRENT_YEAR);
   const { lastMessage } = useSSE('/api/events');
 
+  // The stats themselves are readable all year; only the nav follows it
+  const freeze = useFreeze();
+
   useEffect(() => {
     Promise.all(YEARS.map(fetchStats))
       .then(all => setByYear(Object.fromEntries(YEARS.map((y, i) => [y, all[i]]))))
@@ -58,7 +62,7 @@ export const StatsPage = () => {
   const loaded = YEARS.every(y => byYear[y]);
 
   return (
-    <PageShell active="stats" title="🎃 Candy Stats">
+    <PageShell active="stats" title="🎃 Candy Stats" freeze={freeze}>
       <div className="stats-page">
         <HallOfFame year={year} />
 

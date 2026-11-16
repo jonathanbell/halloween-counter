@@ -121,6 +121,20 @@ class AdminTokenFilterTest {
         verify(chain).doFilter(request, response);
     }
 
+    // The unlock is the only way around the off-season freeze, so the
+    // admin token (the one visitors can photograph) must not reach it
+    @Test
+    void unlockRejectsAdminToken() throws Exception {
+        when(request.getServletPath()).thenReturn("/api/settings/unlock");
+        when(request.getParameter("token")).thenReturn("admin-token");
+        when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        verify(chain, never()).doFilter(request, response);
+    }
+
     @Test
     void tokenRotationRejectsAdminToken() throws Exception {
         when(request.getServletPath()).thenReturn("/api/tokens/rotate");

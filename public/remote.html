@@ -193,7 +193,7 @@
 
     <button class="increment-button" id="incrementButton">
       <span class="button-icon" aria-hidden="true">👻</span>
-      <span>Add Visitor</span>
+      <span id="buttonLabel">Add Visitor</span>
     </button>
 
     <div class="card home-qr">
@@ -225,6 +225,7 @@
     const candyRemaining = document.getElementById('candyRemaining');
     const totalCandy = document.getElementById('totalCandy');
     const incrementButton = document.getElementById('incrementButton');
+    const buttonLabel = document.getElementById('buttonLabel');
     const errorMessage = document.getElementById('errorMessage');
 
     const STATUS_DOT = { connected: 'ok', connecting: 'warn', disconnected: 'bad' };
@@ -245,6 +246,13 @@
       countValue.textContent = currentCount;
       candyRemaining.textContent = Math.max(0, initialCandyCount - currentCount);
       totalCandy.textContent = initialCandyCount;
+    }
+
+    // Any day but Halloween the server refuses increments (unless unlocked
+    // from the settings page), so the button says why instead of failing
+    function applyFreeze(frozen) {
+      incrementButton.disabled = frozen;
+      buttonLabel.textContent = frozen ? 'Frozen until Halloween' : 'Add Visitor';
     }
 
     function showError(message) {
@@ -275,6 +283,9 @@
             }
             updateDisplay();
           }
+
+          // Unlock, its expiry, or midnight
+          if (data.type === 'freeze') applyFreeze(data.frozen);
         } catch (e) {
           console.error('SSE parse error:', e);
         }
@@ -295,6 +306,7 @@
           currentCount = state.currentCount;
           initialCandyCount = state.initialCandyCount;
           updateDisplay();
+          applyFreeze(Boolean(state.frozen));
         })
         .catch(e => console.error('state fetch failed:', e));
     }

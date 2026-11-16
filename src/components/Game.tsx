@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useFreeze } from '../hooks/useFreeze';
 import { useGame } from '../hooks/useGame';
 import { useGameFeed } from '../hooks/useGameFeed';
 import { CastLineup, type CastMember } from '../game/CastLineup';
@@ -9,10 +10,13 @@ import { isDecoy } from '../game/protocol';
 import { unlockAudio } from '../game/sfx';
 import { emptyTally, gameTitle, type DecoyTally } from '../game/titles';
 import { DroolingRain } from './DroolingRain';
+import { FreezeCountdown } from './FreezeCountdown';
 import { PageShell } from './PageShell';
 import './Game.css';
 
 const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/game`;
+
+const TITLE = '🪦 Graveyard Bonk';
 
 const INITIALS_KEY = 'graveyardBonkInitials';
 const MAX_INITIALS = 3;
@@ -41,6 +45,10 @@ export const Game = () => {
   const feed = useGameFeed();
   const { state, now, start, shown, bonk, tap, quit, reconnect } = useGame({ url: WS_URL, feed: feed.status });
   const [initials, setInitials] = useState(savedInitials);
+
+  // Any day but Halloween the server denies every start, so the countdown
+  // is the whole page
+  const freeze = useFreeze();
 
   useEffect(() => preloadScenery(), []);
 
@@ -75,8 +83,21 @@ export const Game = () => {
     );
   }
 
+  // Wait for the answer rather than draw the instructions (and load their
+  // 3D cast) only to swap them for the countdown
+  if (!freeze) return <PageShell active="game" title={TITLE} freeze={freeze}>{null}</PageShell>;
+
+  // Results stay up: a game that ran past midnight still gets its ending
+  if (freeze.frozen && state.phase !== 'results') {
+    return (
+      <PageShell active="game" title={TITLE} freeze={freeze}>
+        <FreezeCountdown opensAt={freeze.opensAt} />
+      </PageShell>
+    );
+  }
+
   return (
-    <PageShell active="game" title="🪦 Graveyard Bonk">
+    <PageShell active="game" title={TITLE} freeze={freeze}>
       <div className="bonk-page">
         {state.phase === 'connecting' && <p className="bonk-note">Digging up zombies…</p>}
 
@@ -92,7 +113,7 @@ export const Game = () => {
 
         <DroolingRain isActive={false} burstTrigger={confetti} />
 
-        {(state.phase === 'ready' || state.phase === 'results' || state.phase === 'starting') && (
+        {!freeze.frozen && (state.phase === 'ready' || state.phase === 'results' || state.phase === 'starting') && (
           <StartPanel
             initials={initials}
             onInitials={value => setInitials(cleanInitials(value))}

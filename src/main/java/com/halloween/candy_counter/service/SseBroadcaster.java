@@ -30,6 +30,10 @@ public class SseBroadcaster {
     private static final long HEARTBEAT_INTERVAL_MS = 15_000;
     private static final int MAX_SUBSCRIBERS = 100;
 
+    // Midnight, an unlock and its expiry all show up as "the answer
+    // changed", so one watcher covers every way the freeze can flip
+    private static final long FREEZE_WATCH_INTERVAL_MS = 1_000;
+
     private static final CompletableFuture<Void> DONE = CompletableFuture.completedFuture(null);
 
     private final List<SseEmitter> subscribers = new CopyOnWriteArrayList<>();
@@ -40,7 +44,10 @@ public class SseBroadcaster {
     private final Map<SseEmitter, CompletableFuture<Void>> lanes = new ConcurrentHashMap<>();
 
     private final SettingsService settingsService;
+    private final FreezeService freezeService;
     private final ObjectMapper objectMapper;
+
+    private boolean lastFrozen;
 
     private final ScheduledExecutorService heartbeatExecutor =
         Executors.newSingleThreadScheduledExecutor(r -> {
@@ -56,11 +63,35 @@ public class SseBroadcaster {
             return t;
         });
 
-    public SseBroadcaster(SettingsService settingsService, ObjectMapper objectMapper) {
+    public SseBroadcaster(SettingsService settingsService, FreezeService freezeService,
+                          ObjectMapper objectMapper) {
         this.settingsService = settingsService;
+        this.freezeService = freezeService;
         this.objectMapper = objectMapper;
+        this.lastFrozen = freezeService.isFrozen();
+
         heartbeatExecutor.scheduleWithFixedDelay(this::sendHeartbeats,
             HEARTBEAT_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, TimeUnit.MILLISECONDS);
+        heartbeatExecutor.scheduleWithFixedDelay(this::announceFreezeFlip,
+            FREEZE_WATCH_INTERVAL_MS, FREEZE_WATCH_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    }
+
+    // Open pages swap between their controls and the countdown without a
+    // reload. Catches everything: a scheduled task that throws never runs
+    // again, and that would end the flips silently
+    synchronized void announceFreezeFlip() {
+        try {
+            boolean frozen = freezeService.isFrozen();
+            if (frozen == lastFrozen) return;
+            lastFrozen = frozen;
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "freeze");
+            payload.put("frozen", frozen);
+            payload.put("opensAt", freezeService.opensAt().toString());
+            payload.put("timestamp", Instant.now().toString());
+            sendToSubscribers(payload);
+        } catch (Exception ignored) {}
     }
 
     public SseEmitter subscribe() {

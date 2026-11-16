@@ -12,7 +12,9 @@ import { useStats } from "./hooks/useStats";
 import { useSSE } from "./hooks/useSSE";
 import { useProjectionMode } from "./hooks/useProjectionMode";
 import { useGameFeed } from "./hooks/useGameFeed";
+import { useFreeze } from "./hooks/useFreeze";
 import { LiveBanner } from "./components/LiveBanner";
+import { FreezeCountdown } from "./components/FreezeCountdown";
 import type { AimedStrike } from "./components/LightningCanvas";
 import "./App.css";
 
@@ -39,7 +41,7 @@ function App() {
     return (
       <Suspense
         fallback={
-          <PageShell active="game" title="🪦 Graveyard Bonk">
+          <PageShell active="game" title="🪦 Graveyard Bonk" freeze={null}>
             {null}
           </PageShell>
         }
@@ -72,6 +74,13 @@ function CounterPage() {
   const gamePhase = feed.broadcast.phase;
   const gameLive = gamePhase === "countdown" || gamePhase === "live";
   const showBroadcast = isProjection && gamePhase !== "idle";
+
+  // Any day but Halloween the server refuses writes, so the countdown is
+  // the whole page. Phones wait for the answer rather than flash the
+  // counter first; the door never waits, it must always draw something
+  const freeze = useFreeze();
+  const frozen = freeze?.frozen ?? false;
+  const waiting = !freeze && !isProjection;
 
   // Fetch the 3D chunk while the door idles, so the first game starts
   // instantly instead of waiting on a download
@@ -132,7 +141,7 @@ function CounterPage() {
       if (e.code === "Space") {
         e.preventDefault();
         // A held spacebar auto-repeats: one press is one visitor
-        if (!e.repeat) counter.increment();
+        if (!e.repeat && !frozen) counter.increment();
       }
     };
 
@@ -143,7 +152,7 @@ function CounterPage() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keypress", handleKeyPress);
     };
-  }, [counter, isProjection]);
+  }, [counter, isProjection, frozen]);
 
   const page = (
     <div className={`app ${isProjection ? "projection" : ""}`}>
@@ -158,7 +167,7 @@ function CounterPage() {
       {/* Outside .main-content so it falls behind the page's UI, like the lightning */}
       {!showBroadcast && (
         <DroolingRain
-          isActive={isProjection && counter.candyRemaining > 0}
+          isActive={isProjection && !frozen && counter.candyRemaining > 0}
           externalTrigger={rainTrigger}
           count={counter.currentCount}
         />
@@ -176,7 +185,9 @@ function CounterPage() {
           />
           <DroolingRain isActive={false} burstTrigger={burst} />
         </Suspense>
-      ) : (
+      ) : freeze?.frozen ? (
+        <FreezeCountdown opensAt={freeze.opensAt} />
+      ) : waiting ? null : (
         <div className="main-content">
           <Counter
             count={counter.currentCount}
@@ -222,7 +233,7 @@ function CounterPage() {
   if (isProjection) return page;
 
   return (
-    <PageShell active="counter" title="🎃 Candy Counter">
+    <PageShell active="counter" title="🎃 Candy Counter" freeze={freeze}>
       {page}
     </PageShell>
   );

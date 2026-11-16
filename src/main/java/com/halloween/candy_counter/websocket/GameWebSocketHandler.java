@@ -3,6 +3,7 @@ package com.halloween.candy_counter.websocket;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.halloween.candy_counter.service.FrozenException;
 import com.halloween.candy_counter.service.GameService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,15 +59,24 @@ public class GameWebSocketHandler extends TextWebSocketHandler {
     private void handleGameStart(WebSocketSession session, JsonNode payload) throws Exception {
         String initials = payload.path("initials").isTextual() ? payload.get("initials").asText() : null;
 
-        // On success GameService replies with game_started (it carries the
-        // schedule). A denial says who is playing and for how long
-        if (gameService.startGame(session, initials) != null) return;
-
         ObjectNode denied = objectMapper.createObjectNode();
         denied.put("type", "game_start_denied");
-        denied.put("reason", "already_active");
-        denied.put("initials", gameService.activeInitials());
-        denied.put("endsInMs", gameService.endsInMs());
+
+        // On success GameService replies with game_started (it carries the
+        // schedule). A denial says who is playing and for how long
+        try {
+            if (gameService.startGame(session, initials) != null) return;
+
+            denied.put("reason", "already_active");
+            denied.put("initials", gameService.activeInitials());
+            denied.put("endsInMs", gameService.endsInMs());
+        } catch (FrozenException e) {
+            // Same shape as a busy graveyard, with nobody playing
+            denied.put("reason", "frozen");
+            denied.putNull("initials");
+            denied.put("endsInMs", 0);
+        }
+
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(denied)));
     }
 

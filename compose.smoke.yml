@@ -16,6 +16,8 @@ services:
       DATABASE_PASSWORD: localtest
       ADMIN_TOKEN: test-admin
       SETTINGS_TOKEN: test-settings
+      # Throwaway database, and a smoke run that cannot write proves little
+      FREEZE_ENABLED: "false"
     depends_on:
       postgres:
         condition: service_healthy

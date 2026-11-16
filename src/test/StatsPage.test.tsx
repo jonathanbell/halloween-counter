@@ -5,6 +5,7 @@ import { CURRENT_YEAR, FIRST_YEAR } from '../year';
 
 // jsdom has no EventSource; the page only needs lastMessage
 vi.mock('../hooks/useSSE', () => ({ useSSE: () => ({ lastMessage: null }) }));
+vi.mock('../hooks/useFreeze', () => ({ useFreeze: () => ({ frozen: false, opensAt: 0 }) }));
 
 // Totals per year: 2025 = 346, every later year = 100 + its offset
 const totalFor = (year: number) => (year === FIRST_YEAR ? 346 : 100 + year - FIRST_YEAR);

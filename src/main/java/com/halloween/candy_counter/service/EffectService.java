@@ -22,13 +22,18 @@ public class EffectService {
 
     private final Map<EffectType, Long> lastFired = new EnumMap<>(EffectType.class);
     private final GameService gameService;
+    private final FreezeService freezeService;
 
-    public EffectService(GameService gameService) {
+    public EffectService(GameService gameService, FreezeService freezeService) {
         this.gameService = gameService;
+        this.freezeService = freezeService;
     }
 
     // Synchronized: concurrent requests must not both pass the cooldown gate
     public synchronized FireResult tryFire(EffectType type) {
+        // Effects are rows in `events` too
+        freezeService.requireOpen();
+
         if (gameService.isGameActive()) return FireResult.GAME_ACTIVE;
 
         long now = System.currentTimeMillis();

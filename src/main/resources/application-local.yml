@@ -24,6 +24,11 @@ logging:
   level:
     com.halloween: DEBUG
 
+# Development happens all year. To see the frozen pages, start with
+# -Dspring-boot.run.arguments=--freeze.enabled=true
+freeze:
+  enabled: false
+
 admin:
   token: dev-admin-token
   settings-token: dev-settings-token

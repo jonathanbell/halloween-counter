@@ -19,19 +19,24 @@ public class CounterService {
     private final SettingsService settingsService;
     private final ApplicationEventPublisher eventPublisher;
     private final GameService gameService;
+    private final FreezeService freezeService;
 
     public CounterService(EventRepository eventRepository,
                           SettingsService settingsService,
                           ApplicationEventPublisher eventPublisher,
-                          GameService gameService) {
+                          GameService gameService,
+                          FreezeService freezeService) {
         this.eventRepository = eventRepository;
         this.settingsService = settingsService;
         this.eventPublisher = eventPublisher;
         this.gameService = gameService;
+        this.freezeService = freezeService;
     }
 
     @Transactional
     public Event increment(Integer year) {
+        freezeService.requireOpen();
+
         Event event = new Event("increment", year);
         Event saved = eventRepository.save(event);
         eventPublisher.publishEvent(new CounterUpdatedEvent(saved));
@@ -67,6 +72,10 @@ public class CounterService {
         state.put("gameActive", gameService.isGameActive());
         state.put("gameInitials", gameService.activeInitials());
         state.put("gameEndsInMs", gameService.endsInMs());
+
+        // Off Halloween night every screen swaps its controls for a countdown
+        state.put("frozen", freezeService.isFrozen());
+        state.put("opensAt", freezeService.opensAt().toString());
         return state;
     }
 

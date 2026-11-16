@@ -9,7 +9,10 @@ const mocks = vi.hoisted(() => ({
   state: null as unknown as PhoneState,
   now: 0,
   start: vi.fn(),
+  freeze: null as { frozen: boolean; opensAt: number } | null,
 }));
+
+vi.mock('../hooks/useFreeze', () => ({ useFreeze: () => mocks.freeze }));
 
 vi.mock('../hooks/useGame', () => ({
   useGame: () => ({
@@ -33,12 +36,51 @@ vi.mock('../game/CastLineup', () => ({
 
 const ready: PhoneState = { ...initialPhoneState, phase: 'ready', connected: true };
 
+// Halloween night, which is what every test but the frozen ones is about
+const OPEN = { frozen: false, opensAt: 0 };
+
 describe('Game', () => {
   beforeEach(() => {
     mocks.state = ready;
     mocks.now = 0;
     mocks.start.mockReset();
+    mocks.freeze = OPEN;
     localStorage.clear();
+  });
+
+  it('is nothing but a countdown outside Halloween', () => {
+    const halfwayThroughDayFour = 3.5 * 24 * 60 * 60 * 1000;
+    mocks.freeze = { frozen: true, opensAt: Date.now() + halfwayThroughDayFour };
+
+    render(<Game />);
+
+    expect(screen.getByRole('timer')).toHaveTextContent(/^3 days 1[12] hours/);
+    expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/your initials/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/as fast as you can/i)).not.toBeInTheDocument();
+  });
+
+  it('draws nothing until the server says whether it is frozen', () => {
+    mocks.freeze = null;
+
+    render(<Game />);
+
+    expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/as fast as you can/i)).not.toBeInTheDocument();
+  });
+
+  it('keeps the results of a game that ran past midnight', () => {
+    mocks.freeze = { frozen: true, opensAt: Date.now() };
+    mocks.state = {
+      ...ready,
+      phase: 'results',
+      final: { initials: 'JB', score: 3140, avgMs: 287, rank: 4, scoreId: 42 },
+    };
+
+    render(<Game />);
+
+    expect(screen.getByText('3140')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Play again' })).not.toBeInTheDocument();
   });
 
   it('takes up to three letters of initials and starts with them', () => {

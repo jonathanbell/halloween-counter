@@ -3,6 +3,8 @@ import type { GameFeedMessage } from '../game/protocol';
 
 export type SSEMessage =
   | { type: 'increment' | 'effect_lightning' | 'effect_candy_rain'; year: number; total: number; initialCandyCount?: number; timestamp: string }
+  // The off-season lock flipped: an unlock, its expiry, or midnight
+  | { type: 'freeze'; frozen: boolean; opensAt: string; timestamp: string }
   | GameFeedMessage;
 
 interface UseSSEReturn {

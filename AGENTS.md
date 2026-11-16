@@ -121,7 +121,8 @@ com.halloween.candy_counter
 │   └── V6_1__DropStaleH2TypeCheck Local-profile Flyway fix (see section 5)
 ├── controller
 │   ├── CounterController          POST /api/counter, GET /api/state
-│   ├── SettingsController         GET/POST /api/settings (settings token)
+│   ├── SettingsController         GET/POST /api/settings, POST unlock/lock
+│   │                              for the freeze (settings token)
 │   ├── TokenController            POST /api/tokens/rotate (settings token)
 │   ├── EffectsController          POST /api/effects/lightning,candy-rain
 │   ├── StatsController            GET /api/stats (public chart data)
@@ -130,11 +131,14 @@ com.halloween.candy_counter
 │   ├── CounterService             Increments, state, per-minute histogram
 │   ├── EffectService              Lightning / candy-rain cooldowns (350 /
 │   │                              250ms), refused while a game runs
+│   ├── FreezeService              Writes only on Oct 31 (Pacific): the rule,
+│   │                              the 2h unlock, the Nov-Dec seal
 │   ├── SettingsService            Year settings, count adjustment, and
 │   │                              `tally`: the only total computation
 │   ├── TokenService               Resolves tokens (DB row → env fallback),
 │   │                              generates rotations
-│   ├── SseBroadcaster             SSE subscribe + counter/game broadcast
+│   ├── SseBroadcaster             SSE subscribe + counter/game broadcast,
+│   │                              and the watcher that announces freeze flips
 │   ├── GameService                Graveyard Bonk referee: one game at a
 │   │                              time, judges bonks, relays to SSE
 │   └── LeaderboardService         Saves finished games, ranks, top N
@@ -181,15 +185,19 @@ src/
 │   ├── useStats.ts                Server statistics (minute histogram math)
 │   ├── useGame.ts                 Phone's WebSocket -> phoneReducer
 │   ├── useGameFeed.ts             Game as seen over SSE -> feedReducer
+│   ├── useFreeze.ts               Off-season lock: /api/state + `freeze` SSE
 │   └── useProjectionMode.ts       ?projection flag → hide chrome
 ├── components
-│   ├── PageShell.tsx              Shared chrome: pill nav, title, rule
+│   ├── PageShell.tsx              Shared chrome: pill nav (no Game pill while
+│   │                              frozen), title, rule
 │   ├── Counter.tsx, CandyProgress.tsx, StatsDisplay.tsx   The classic visuals
 │   ├── LightningCanvas.tsx, DroolingRain.tsx    Effects (+ aimed strikes,
 │   │                              candy bursts, calm weather for games)
 │   ├── Game.tsx                   /game: initials, lockout, play, results
 │   ├── GameBroadcast.tsx          garage door during a game (lazy chunk)
 │   ├── LiveBanner.tsx             viewer phones: who is playing
+│   ├── FreezeCountdown.tsx        The whole page while frozen (door included):
+│   │                              days / hours / minutes / seconds to Halloween
 │   ├── ViewerControls.tsx         game/stats hero cards and effects
 │   ├── StatsPage.tsx              Recharts graphs for last-year/current-year
 │   └── HallOfFame.tsx             leaderboard card, #score-<id> highlight
@@ -239,6 +247,13 @@ Rules:
   unscoped `vh` rule is how you break the phone layout.
 - **The projection page renders no chrome.** `App.tsx` returns the bare page
   when `useProjectionMode()` is true and wraps it in `PageShell` otherwise.
+- **While frozen, a page is `FreezeCountdown` and nothing else.** `/` and
+  `/game` render only it - no counter, candy supply, hero cards or effect
+  buttons - and `PageShell` drops the Game pill on every page. The door
+  shows it too, sized under `.app.projection`. Phone pages draw nothing
+  until `useFreeze()` answers, so the counter never flashes before the
+  countdown; the door does not wait, it must always draw something. Each
+  page calls `useFreeze()` once and hands the answer to `PageShell`.
 - **Navigation is the `.page-nav` pill row** above the title, linking to
   the other pages only. `/` also sells the game and stats with hero cards
   in `ViewerControls`. The admin tools have their own Remote / Settings
@@ -313,9 +328,34 @@ Admin    POST /api/counter        increment            (admin token)
          GET  /api/settings       year config          (settings token)
          POST /api/settings       year config          (settings token)
          POST /api/tokens/rotate  rotate a token       (settings token)
+         POST /api/settings/unlock | /api/settings/lock
+                                  freeze override      (settings token)
 
 Game     WS   /ws/game            Graveyard Bonk (phone)
 ```
+
+**Writes only happen on Halloween night.** Outside Oct 31
+(`America/Vancouver`) `FreezeService` refuses increments, effects and game
+starts; reads, SSE and settings carry on.
+
+```
+write path                 gate (first line)             frozen answer
+POST /api/counter       -> CounterService.increment   -> 423
+POST /api/effects/*     -> EffectService.tryFire      -> 423
+WS game_start           -> GameService.startGame      -> game_start_denied
+                                    |                     {reason:"frozen"}
+                                    v
+                       FreezeService.requireOpen()
+
+Jan 1 ............ Oct 30 | Oct 31 | Nov 1 ........ Dec 31
+frozen, can be unlocked   |  open  | frozen, sealed
+```
+
+The unlock (settings page, two hours, in memory) is for rehearsals and
+testing against production. It is refused from Nov 1 to Dec 31 because
+clients send the calendar year, which is still the Halloween just counted.
+`/api/state` carries `frozen` and `opensAt`; the `freeze` SSE message
+flips open pages between their controls and a countdown.
 
 Tokens travel as `?token=...` or `Authorization: Bearer <token>`.
 `AdminTokenFilter` gates `/api/counter`, `/api/settings` and `/api/tokens`;
@@ -380,7 +420,7 @@ row uses a synthetic 6pm PDT timestamp so it lands in one histogram bucket.
 Two suites. Both must pass before committing. Runners, including
 single-test selection, are in **Commands** above.
 
-**Backend** - `mvn test` (63 tests, mocked only, no Spring context boot):
+**Backend** - `mvn test` (78 tests, mocked only, no Spring context boot):
 
 ```
 src/test/java/com/halloween/candy_counter
@@ -393,23 +433,29 @@ src/test/java/com/halloween/candy_counter
 ├── service
 │   ├── CounterServiceTest      increment aggregation + getState
 │   ├── EffectServiceTest       cooldowns, refused during a game
+│   ├── FreezeServiceTest       Oct 31 boundaries (Pacific, not UTC), the
+│   │                           unlock window, the Nov-Dec seal, opensAt
 │   ├── SettingsServiceTest     tally defaults, adjustment, update paths
-│   ├── SseBroadcasterTest      per-screen message order
+│   ├── SseBroadcasterTest      per-screen message order, one message per
+│   │                           freeze flip
 │   ├── GameServiceTest         start/deny, relays, judging, persistence
 │   └── LeaderboardServiceTest  record, rank, top N
 └── security
     └── AdminTokenFilterTest    token accept/reject per endpoint
 ```
 
-**Frontend** - `npm run test:run` (99 tests, vitest + jsdom; config in
+**Frontend** - `npm run test:run` (107 tests, vitest + jsdom; config in
 `vite.config.ts`, setup in `src/test/setup.ts`):
 
 ```
 src/test
 ├── theme.test.ts          src/theme.ts ↔ public/theme.css token parity
-├── PageShell.test.tsx     nav links per page, title/children
+├── PageShell.test.tsx     nav links per page, title/children, no Game
+│                          link while frozen, hidden until the answer
 ├── Counter.test.tsx       glitch class, per-well rolls, data-digit
-├── Game.test.tsx          cast lineup, initials, lockout, play, results
+├── Game.test.tsx          cast lineup, initials, lockout, play, results,
+│                          only the countdown while frozen
+├── FreezeCountdown.test.tsx  the four units, singulars, waits at zero
 ├── phoneReducer.test.ts   phone game state machine
 ├── PhoneGame.test.tsx     two-tap quit button
 ├── feedReducer.test.ts    garage door phases, replay target
@@ -445,6 +491,12 @@ at all, so :8080 serves nothing until that runs.
 
 Dev tokens (from `application-local.yml`): `dev-admin-token` /
 `dev-settings-token`.
+
+The off-season freeze is **off** in the local profile, so writes work every
+day of the year. To work on the frozen pages, add
+`-Dspring-boot.run.arguments=--freeze.enabled=true` to the backend command.
+From Nov 1 to Dec 31 that shows the sealed state, where the unlock is
+refused too.
 
 ---
 
@@ -554,6 +606,18 @@ Day-to-day loop, the server's shape, and failure modes: `docs/deployment.md`.
     lazy-loaded and are the only importers of `src/game/*`'s 3D files, so
     the counter and stats pages never download three.js. The projector
     prefetches the chunk while idle so the first game starts instantly.
+19. **Writes only on Halloween night, decided by the server's Pacific
+    date.** Before this, anyone could add to a finished year's Hall of Fame
+    in November. The override is a timed, in-memory unlock rather than a
+    stored switch, so forgetting it or restarting leaves the data locked.
+    It is refused in November and December because the year a client
+    sends is the calendar year: until Jan 1 that is still the Halloween
+    just counted, and one test game would sit in its real results.
+20. **One watcher announces every freeze flip.** `SseBroadcaster` re-reads
+    `FreezeService.isFrozen()` once a second and broadcasts when the answer
+    changed. An unlock, a lock, the unlock running out and both midnights
+    are four different triggers; polling the answer covers all of them
+    without scheduling (and re-scheduling) the next transition.
 
 ---
 
@@ -564,6 +628,15 @@ Day-to-day loop, the server's shape, and failure modes: `docs/deployment.md`.
   data on the server.
 - **Don't compute a total without `count_adjustment`.** Check the number
   against `GET /api/state` before trusting it.
+- **Don't add a write path without `freezeService.requireOpen()` as its
+  first line.** Anything that inserts into `events` outside Halloween night
+  reopens a finished year. Gate the start of the action, not its end: a
+  game running across midnight must still save.
+- **Don't persist the unlock or drop the Nov-Dec seal.** It is in memory
+  and timed so that it cannot be left on, and sealed because a test write
+  before Jan 1 lands in the Halloween just counted.
+- **Don't let the freeze watcher throw.** A scheduled task that throws is
+  never run again, and open pages would silently stop following flips.
 - **Don't hardcode a token in source.** Tokens come from `TokenService`
   (DB row, then env var) on the server, and from the URL on the client.
 - **Don't put a token-bearing QR code (or anything else with a token) in

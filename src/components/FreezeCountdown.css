@@ -1,0 +1,123 @@
+/* The off-season page: a countdown and nothing else.
+
+   Phone-first like the rest of the app. The numerals are sized in vw inside
+   a clamp (as .digit and .bonk-score are); the garage door's vh sizing is
+   scoped under .app.projection at the bottom. */
+
+.freeze {
+  /* Above the lightning canvas and the door's fog, like .main-content */
+  position: relative;
+  z-index: 2;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  padding-block: var(--space-6) var(--space-7);
+  font-family: var(--font-display);
+  text-align: center;
+}
+
+/* The sky opening: arms of moonlit cloud turning once every two minutes.
+   The mask hollows the middle so the numbers sit in the eye of it and
+   fades the rim so no edge of the disc shows.
+
+   The disc itself stays still and clips; only the cloud inside it turns.
+   A turning box is wider at 45 degrees, and on a phone that widened the
+   page into a sideways scroll. */
+.freeze-vortex {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(100%, 560px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  overflow: hidden;
+  filter: blur(22px);
+  mask-image: radial-gradient(closest-side, transparent 8%, black 50%, transparent 100%);
+  pointer-events: none;
+}
+
+.freeze-vortex::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    transparent 0deg,
+    color-mix(in srgb, var(--color-scene-moonlight) 62%, transparent) 70deg,
+    transparent 140deg,
+    color-mix(in srgb, var(--color-candy-purple) 80%, transparent) 215deg,
+    transparent 290deg,
+    color-mix(in srgb, var(--color-scene-moonlight) 44%, transparent) 335deg,
+    transparent 360deg
+  );
+  animation: freeze-turn 120s linear infinite;
+}
+
+@keyframes freeze-turn {
+  to { rotate: 1turn; }
+}
+
+/* Two columns meeting on the centre axis: numbers end there, units start
+   there. A number changing width only moves its far edge. */
+.freeze-clock {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 0.14em;
+  align-items: baseline;
+  width: 100%;
+  /* 26vw: three digits of days still fit their half of a 300px screen */
+  font-size: clamp(4.5rem, 26vw, 8.5rem);
+  line-height: 0.9;
+}
+
+.freeze-number {
+  justify-self: end;
+  color: var(--color-text);
+  /* Moonlight on top; the dark layer under it only shows on the door, whose
+     photo is pale where the moon is */
+  text-shadow:
+    0 0 0.1em color-mix(in srgb, var(--color-scene-moonlight) 80%, transparent),
+    0 0 0.5em color-mix(in srgb, var(--color-scene-moonlight) 45%, transparent),
+    0 0.03em 0.16em var(--color-bg);
+}
+
+.freeze-digit {
+  display: inline-block;
+  width: 0.54em;
+  text-align: center;
+}
+
+.freeze-unit {
+  justify-self: start;
+  font-size: 0.3em;
+  letter-spacing: 0.04em;
+  color: var(--color-scene-moonlight);
+  /* A dark halo: an arm of the vortex is the same blue when it passes behind */
+  text-shadow: 0 0 0.5em var(--color-bg), 0 0 0.2em var(--color-bg);
+}
+
+.freeze-omen {
+  position: relative;
+  margin: 0;
+  font-size: clamp(1.375rem, 6.6vw, 2.25rem);
+  letter-spacing: 0.03em;
+  color: var(--color-accent);
+  text-shadow: var(--glow-accent), 0 0 0.35em var(--color-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .freeze-vortex::before { animation: none; }
+}
+
+/* Garage door: the same page, sized to the wall */
+.app.projection .freeze {
+  gap: 4vh;
+  padding-block: 0;
+}
+
+.app.projection .freeze-vortex { width: 118vh; }
+.app.projection .freeze-clock { font-size: 19vh; }
+.app.projection .freeze-omen { font-size: 7vh; }

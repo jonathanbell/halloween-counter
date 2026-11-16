@@ -30,6 +30,11 @@ logging:
     root: INFO
     com.halloween: DEBUG
 
+# Outside Oct 31 (Pacific) every write is refused. false is the kill switch,
+# and what local dev and the smoke stack run with
+freeze:
+  enabled: ${FREEZE_ENABLED:true}
+
 admin:
   token: ${ADMIN_TOKEN:your-default-fallback-admin-token-change-me}
   settings-token: ${SETTINGS_TOKEN:your-default-settings-token-change-me}

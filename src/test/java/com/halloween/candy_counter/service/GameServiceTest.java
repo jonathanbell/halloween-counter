@@ -24,6 +24,7 @@ class GameServiceTest {
 
     @Mock SseBroadcaster broadcaster;
     @Mock LeaderboardService leaderboard;
+    @Mock FreezeService freezeService;
     @Mock WebSocketSession session;
 
     final ObjectMapper objectMapper = new ObjectMapper();
@@ -34,7 +35,7 @@ class GameServiceTest {
         openMocks(this);
         when(session.getId()).thenReturn("sess-1");
         when(session.isOpen()).thenReturn(true);
-        service = new GameService(broadcaster, leaderboard, objectMapper, new Random(42));
+        service = new GameService(broadcaster, leaderboard, freezeService, objectMapper, new Random(42));
     }
 
     // The service owns an executor; every test that starts a game must not
@@ -64,6 +65,16 @@ class GameServiceTest {
     void secondStartDenied() {
         assertNotNull(service.startGame(session, "AAA"));
         assertNull(service.startGame(session, "BBB")); // one concurrent game gate
+    }
+
+    // Any day but Halloween: no session, nothing on the garage door
+    @Test
+    void startRefusedWhileFrozen() {
+        doThrow(new FrozenException()).when(freezeService).requireOpen();
+
+        assertThrows(FrozenException.class, () -> service.startGame(session, "JB"));
+        assertFalse(service.isGameActive());
+        verifyNoInteractions(broadcaster);
     }
 
     @Test

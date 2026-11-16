@@ -11,6 +11,7 @@ Environment variables and config files for the Spring Boot backend.
 | `DATABASE_PASSWORD` | ✅ yes          | DB password                                                              |
 | `ADMIN_TOKEN`       | ✅ yes          | Seeds the **admin** token, which gates `POST /api/counter` (increments)  |
 | `SETTINGS_TOKEN`    | ✅ yes          | Seeds the **settings** token, which gates `/api/settings` and `/api/tokens` |
+| `FREEZE_ENABLED`    | no (`true`)     | `false` turns the off-season freeze off entirely. Leave unset in production |
 
 The settings token is the higher privilege of the two: it can change the
 year config *and* rotate either token. Keep its QR code more private than
@@ -35,6 +36,30 @@ smoke stack (`compose.smoke.yml`) supplies throwaway values.
 > compose block uses `${VAR:?}` guards so a missing secret fails the
 > container instead of quietly booting on a placeholder.
 
+## Off-season freeze
+
+Outside Oct 31 (`America/Vancouver`) the app refuses increments, effects
+and game starts. `docs/api.md` has the rules; this is the configuration
+side of it:
+
+| Where                         | `freeze.enabled` | Why                                                    |
+| ----------------------------- | ---------------- | ------------------------------------------------------ |
+| Production (`application.yml`) | `true`           | The whole point                                        |
+| `application-local.yml`       | `false`          | Development happens all year, on a database that resets |
+| `compose.smoke.yml`           | `false`          | Throwaway Postgres, and a smoke run that cannot write proves little |
+
+To test against production off-season, use **Unlock for testing** on
+`/settings.html` (two hours, in memory, refused from Nov 1 to Dec 31).
+`FREEZE_ENABLED=false` on the server is the kill switch for the night
+itself, not a way to test.
+
+To see the frozen pages locally:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=local \
+  -Dspring-boot.run.arguments=--freeze.enabled=true
+```
+
 ## Profiles (`src/main/resources`)
 
 **`application.yml`** - the default, used in production and by `make smoke`:
@@ -54,6 +79,7 @@ smoke stack (`compose.smoke.yml`) supplies throwaway values.
   it is also why the quoted `"year"` / `"timestamp"` identifiers matter.
 - `ddl-auto: none` - Flyway owns the schema in every profile
 - Tokens hardcoded as `dev-admin-token` / `dev-settings-token`
+- `freeze.enabled: false` - writes work every day of the year
 - Data is gone on every restart, by design
 
 ## Running against a local Postgres

@@ -11,6 +11,32 @@ Resolution order per request: `tokens` DB table row, then the
 `ADMIN_TOKEN` / `SETTINGS_TOKEN` env vars. A blank configured token never
 authenticates. Everything not listed under "Admin endpoints" below is public.
 
+## Off-season freeze
+
+The year's data is read-only outside Halloween night. `FreezeService` is the
+only place the rule lives:
+
+```
+Jan 1 ............ Oct 30 | Oct 31 | Nov 1 ........ Dec 31
+frozen, can be unlocked   |  open  | frozen, sealed
+```
+
+- **Open:** Oct 31, 00:00 to 23:59 `America/Vancouver`.
+- **Frozen:** `POST /api/counter` and `POST /api/effects/*` answer `423`,
+  and a `game_start` is denied with `reason: "frozen"`. Reads, SSE,
+  `/api/settings` and `/api/tokens` are unaffected. A game already running
+  at midnight still ends and saves.
+- **Unlock:** `POST /api/settings/unlock` opens the whole server for two
+  hours. It is held in memory, so it also ends on restart.
+- **Sealed:** from Nov 1 to Dec 31 the unlock is refused. Clients send the
+  calendar year, which is still the Halloween just counted, so a test write
+  would land in real data. From Jan 1 it lands in the coming year, which
+  `make reset-year` wipes before the night.
+- `FREEZE_ENABLED=false` turns all of it off (local profile, smoke stack).
+
+Every screen learns the state from `GET /api/state` and follows changes
+through the `freeze` SSE message.
+
 ## Event types
 
 The application writes these event types to `events`:
@@ -48,7 +74,9 @@ GET /api/state?year=2026
   "candyRemaining": 258,
   "gameActive": true,
   "gameInitials": "JB",
-  "gameEndsInMs": 12000
+  "gameEndsInMs": 12000,
+  "frozen": false,
+  "opensAt": "2026-10-31T07:00:00Z"
 }
 ```
 
@@ -56,6 +84,10 @@ GET /api/state?year=2026
 `gameActive`, `gameInitials` and `gameEndsInMs` reflect the in-memory game
 session (`null` / `0` when none), so a projection or phone refreshed
 mid-game can catch up.
+
+`frozen` is the [off-season freeze](#off-season-freeze). `opensAt` is the
+midnight (Pacific) that starts the next Halloween: on the night itself it
+is that morning's, already past. Frozen pages count down to it.
 
 ### `GET /api/events`
 
@@ -66,6 +98,8 @@ EventSource subscription (SSE, no timeout). One JSON payload per message:
 
 {"type":"effect_lightning","year":2026,"timestamp":"..."}
 {"type":"effect_candy_rain","year":2026,"timestamp":"..."}
+
+{"type":"freeze","frozen":true,"opensAt":"2027-10-31T07:00:00Z","timestamp":"..."}
 
 {"type":"game_status","active":true,"sessionId":"<uuid>","initials":"JB","endsInMs":33000,"upMs":1500,"zombieCount":13,"timestamp":"..."}
 {"type":"game_pop","id":3,"grave":7,"kind":"zombie","timestamp":"..."}
@@ -78,6 +112,10 @@ Notes:
 
 - `initialCandyCount` rides along on count messages so supply changes made
   in settings reach every screen without a refresh.
+- `freeze` is sent when the freeze flips, whatever flipped it: an unlock,
+  a lock, the unlock running out, or midnight. The server re-reads the
+  state once a second, so pages follow within about that. A client that
+  was offline for the flip re-reads `/api/state` when it reconnects.
 - The server sends an SSE comment (`: keep-alive`) every 15s. EventSource
   ignores comments; they only keep proxies (Caddy, or anything else in the
   path) from dropping idle connections.
@@ -109,6 +147,9 @@ While a game is running, so lightning keeps meaning "bonk":
 ```json
 HTTP 409 {"error": "game_active"}
 ```
+
+Outside Halloween night (see [Off-season freeze](#off-season-freeze)) the
+answer is `HTTP 423`, with Spring's default error body.
 
 On success the event is persisted and broadcast over SSE.
 
@@ -153,6 +194,9 @@ POST /api/counter
 { "year": 2026 }
 ```
 
+`HTTP 423` outside Halloween night, even with a valid admin token: see
+[Off-season freeze](#off-season-freeze).
+
 ### `GET /api/settings` (settings token)
 
 ```json
@@ -181,6 +225,28 @@ Pushes a count snapshot to all SSE clients.
 POST /api/settings
 { "year": 2026, "initialCandyCount": 400, "currentTotal": 42 }
 ```
+
+### `POST /api/settings/unlock` / `POST /api/settings/lock` (settings token)
+
+The override for the [off-season freeze](#off-season-freeze): rehearsals
+and testing against the real server. No body.
+
+```json
+POST /api/settings/unlock
+{ "frozen": false, "unlockedUntil": "2027-10-30T21:14:05Z" }
+
+POST /api/settings/lock
+{ "frozen": true }
+```
+
+Unlocking again restarts the two hours. From Nov 1 to Dec 31:
+
+```json
+HTTP 423 {"error": "sealed"}
+```
+
+`lock` only ends an unlock. On Halloween night the answer stays
+`"frozen": false`.
 
 ### `POST /api/tokens/rotate` (settings token)
 
@@ -239,10 +305,16 @@ fields gets `{"type":"error","reason":"invalid_payload"}`.
   "countdownMs": 3000, "durationMs": 30000, "upMs": 1500,
   "pops": [ { "id": 0, "atMs": 500, "grave": 4, "kind": "zombie" }, ... ] }
 { "type": "game_start_denied", "reason": "already_active", "initials": "AB", "endsInMs": 12000 }
+{ "type": "game_start_denied", "reason": "frozen", "initials": null, "endsInMs": 0 }
 { "type": "score_update", "id": 3, "verdict": "bonk", "points": 748, "score": 2310 }
 { "type": "game_ended", "initials": "JB", "score": 3140, "avgMs": 301, "rank": 4, "scoreId": 42 }
 { "type": "error", "reason": "unknown_type" }
 ```
+
+A `frozen` denial means it is not Halloween night
+([Off-season freeze](#off-season-freeze)). The game page already shows a
+countdown instead of a start button by then, so a phone only sees this in
+the second or so before the `freeze` SSE message reaches it.
 
 `atMs` counts from the end of the countdown. `grave` is 0-8 in a 3x3 grid
 (row-major, back row first). `kind` is `zombie`, `golden`, `grandma`, `cat`

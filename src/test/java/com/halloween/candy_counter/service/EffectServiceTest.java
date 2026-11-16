@@ -13,12 +13,23 @@ import static org.mockito.MockitoAnnotations.openMocks;
 class EffectServiceTest {
 
     @Mock GameService gameService;
+    @Mock FreezeService freezeService;
     EffectService service;
 
     @BeforeEach
     void setUp() {
         openMocks(this);
-        service = new EffectService(gameService);
+        service = new EffectService(gameService, freezeService);
+    }
+
+    @Test
+    void refusedWhileFrozenWithoutUsingTheCooldown() {
+        doThrow(new FrozenException()).when(freezeService).requireOpen();
+        assertThrows(FrozenException.class, () -> service.tryFire(LIGHTNING));
+
+        // Unlocked a moment later: the refused call left no cooldown behind
+        doNothing().when(freezeService).requireOpen();
+        assertEquals(FIRED, service.tryFire(LIGHTNING));
     }
 
     @Test

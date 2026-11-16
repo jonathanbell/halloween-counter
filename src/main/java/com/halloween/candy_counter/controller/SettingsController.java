@@ -1,7 +1,10 @@
 package com.halloween.candy_counter.controller;
 
+import com.halloween.candy_counter.service.FreezeService;
 import com.halloween.candy_counter.service.SettingsService;
 import com.halloween.candy_counter.service.SseBroadcaster;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,10 +22,32 @@ public class SettingsController {
 
     private final SettingsService settingsService;
     private final SseBroadcaster sseBroadcaster;
+    private final FreezeService freezeService;
 
-    public SettingsController(SettingsService settingsService, SseBroadcaster sseBroadcaster) {
+    public SettingsController(SettingsService settingsService, SseBroadcaster sseBroadcaster,
+                              FreezeService freezeService) {
         this.settingsService = settingsService;
         this.sseBroadcaster = sseBroadcaster;
+        this.freezeService = freezeService;
+    }
+
+    // Off-season testing and the October rehearsal. Refused from Nov 1 to
+    // Dec 31, when a test write would land in the Halloween just counted
+    @PostMapping("/unlock")
+    public ResponseEntity<Map<String, Object>> unlock() {
+        if (freezeService.unlock() == FreezeService.UnlockResult.SEALED) {
+            return ResponseEntity.status(HttpStatus.LOCKED).body(Map.of("error", "sealed"));
+        }
+
+        return ResponseEntity.ok(Map.of(
+            "frozen", freezeService.isFrozen(),
+            "unlockedUntil", freezeService.unlockedUntil().toString()));
+    }
+
+    @PostMapping("/lock")
+    public Map<String, Object> lock() {
+        freezeService.lock();
+        return Map.of("frozen", freezeService.isFrozen());
     }
 
     @GetMapping

@@ -152,6 +152,10 @@ update.
 ## Dress rehearsal (do this in October)
 
 - [ ] `make deploy` a fresh build; `make verify` passes
+- [ ] **Unlock for testing** on `/settings.html`. Before Oct 31 the server
+      refuses every increment, effect and game otherwise. It lasts two
+      hours and ends on a restart (the one further down included): press
+      it again
 - [ ] Projection open on the garage laptop over garage wifi for 1+ hour
       under `caffeinate -dis` ([below](#keep-the-garage-laptop-awake));
       count updates, the SSE connection survives idling, and the screen
@@ -240,6 +244,7 @@ This is the one sanctioned delete. During the night, fix a miscount with
 | 502 mentioning `127.0.0.11:53` | Stale Docker DNS on the box      | `cd /opt/stack && docker compose down && docker compose up -d` (never `-v` - see the box runbook) |
 | Plain 502 right after deploy   | App still booting (~30 s)        | Wait; `make logs` if it persists                                                                  |
 | Count is wrong                 | Wrong number on the door         | `/settings.html` Set Total Count (writes an adjustment, deletes nothing)                          |
+| Frozen on Halloween night      | Taps fail (423), pages count down | Add `FREEZE_ENABLED: "false"` to the `halloween` service's `environment:` in `/opt/stack/compose.yaml`, then `docker compose up -d halloween`. Remove it on Nov 1 |
 
 The app's data lives in the box's host PostgreSQL, which is managed and
 backed up as part of that server, not from this repo.

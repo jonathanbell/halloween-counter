@@ -67,20 +67,22 @@ public class GameService {
     private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(2);
     private final SseBroadcaster sseBroadcaster;
     private final LeaderboardService leaderboardService;
+    private final FreezeService freezeService;
     private final ObjectMapper objectMapper;
     private final RandomGenerator random;
 
     @Autowired
     public GameService(SseBroadcaster sseBroadcaster, LeaderboardService leaderboardService,
-                       ObjectMapper objectMapper) {
-        this(sseBroadcaster, leaderboardService, objectMapper, new SecureRandom());
+                       FreezeService freezeService, ObjectMapper objectMapper) {
+        this(sseBroadcaster, leaderboardService, freezeService, objectMapper, new SecureRandom());
     }
 
     // Tests pass a seeded generator so schedules are repeatable
     GameService(SseBroadcaster sseBroadcaster, LeaderboardService leaderboardService,
-                ObjectMapper objectMapper, RandomGenerator random) {
+                FreezeService freezeService, ObjectMapper objectMapper, RandomGenerator random) {
         this.sseBroadcaster = sseBroadcaster;
         this.leaderboardService = leaderboardService;
+        this.freezeService = freezeService;
         this.objectMapper = objectMapper;
         this.random = random;
     }
@@ -122,6 +124,10 @@ public class GameService {
 
     @Nullable
     public synchronized UUID startGame(WebSocketSession session, @Nullable String rawInitials) {
+        // Only starts are gated: a game running past midnight still ends
+        // and saves
+        freezeService.requireOpen();
+
         // Concurrency gate: one active game at a time. Synchronized so two
         // racing game_start messages cannot both pass the isEmpty check
         if (!activeSessions.isEmpty()) return null;

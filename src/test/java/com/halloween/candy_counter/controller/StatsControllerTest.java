@@ -3,6 +3,7 @@ package com.halloween.candy_counter.controller;
 import com.halloween.candy_counter.repository.EventRepository;
 import com.halloween.candy_counter.repository.SettingsRepository;
 import com.halloween.candy_counter.service.CounterService;
+import com.halloween.candy_counter.service.FreezeService;
 import com.halloween.candy_counter.service.GameService;
 import com.halloween.candy_counter.service.SettingsService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +34,8 @@ class StatsControllerTest {
         openMocks(this);
         SettingsService settingsService = new SettingsService(settingsRepository, eventRepository);
         CounterService counterService = new CounterService(
-            eventRepository, settingsService, mock(ApplicationEventPublisher.class), mock(GameService.class));
+            eventRepository, settingsService, mock(ApplicationEventPublisher.class), mock(GameService.class),
+            mock(FreezeService.class));
         controller = new StatsController(counterService, settingsService);
     }
 
