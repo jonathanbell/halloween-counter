@@ -1,6 +1,6 @@
 # TODOs
 
-- We need some mechanism to lock the data each year. In other words, folks should not be able to go and raise the game count (by playing the game) or increment the counter on Nov. 1. Perhaps some kind of "frozen mode" with wording like "xxx days until Halloween" and a countdown timer if the date in PDT is not Oct. 31. We need to be able to override this so that we can develop new features throughout the year (perhaps via an existing token).
+- The game allows the same person to play it multiple times, but then their initials end up multiple times in the leaderboard. WDYT about only bumping their spot in the leaderboard up if they got a higher score than their previous one? We'd need a way to handle people with the same initials but different phones.
 
 ## Ideas
 
