@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HallOfFame } from '../components/HallOfFame';
 
@@ -44,7 +44,8 @@ describe('HallOfFame', () => {
     const row = (await screen.findAllByRole('listitem'))[1];
     expect(row).toHaveClass('highlight');
     expect(row).toHaveAttribute('id', 'score-9');
-    expect(row.scrollIntoView).toHaveBeenCalled();
+    // The scroll runs in an effect after the rows paint, so it can trail them
+    await waitFor(() => expect(row.scrollIntoView).toHaveBeenCalled());
   });
 
   it('invites the first player when the year is empty', async () => {
