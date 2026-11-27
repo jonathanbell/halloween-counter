@@ -1,5 +1,5 @@
 {
-  "java.compile.nullAnalysis.mode": "automatic",
+  "java.compile.nullAnalysis.mode": "disabled",
   "makefile.configureOnOpen": false,
   "spring-boot.ls.java.validation.spring-boot-version-validation": "off"
 }

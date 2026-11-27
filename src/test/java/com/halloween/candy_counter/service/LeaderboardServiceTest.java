@@ -33,7 +33,7 @@ class LeaderboardServiceTest {
         when(eventRepository.save(any(Event.class))).thenAnswer(inv -> withId(inv.getArgument(0), 42L));
         when(eventRepository.countScoresAbove(2026, 3140)).thenReturn(3L);
 
-        LeaderboardService.Placement placement = service.record(2026, sessionId, 3140, "JB", 287);
+        LeaderboardService.Placement placement = service.save(2026, sessionId, 3140, "JB", 287);
 
         assertEquals(42L, placement.scoreId());
         assertEquals(4, placement.rank());

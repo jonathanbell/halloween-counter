@@ -211,7 +211,7 @@ class GameServiceTest {
         UUID sessionId = service.startGame(session, "JB");
         service.onShown(session, 0);
         service.onBonk(session, 0, 300);
-        when(leaderboard.record(anyInt(), eq(sessionId), eq(820), eq("JB"), eq(300)))
+        when(leaderboard.save(anyInt(), eq(sessionId), eq(820), eq("JB"), eq(300)))
             .thenReturn(new LeaderboardService.Placement(42L, 3));
 
         service.endGame(session);
@@ -269,7 +269,7 @@ class GameServiceTest {
 
         assertFalse(service.isGameActive());
         assertEquals(820, sent("game_ended").get(0).get("score").asInt());
-        verify(leaderboard).record(anyInt(), eq(sessionId), eq(820), eq("JB"), eq(300));
+        verify(leaderboard).save(anyInt(), eq(sessionId), eq(820), eq("JB"), eq(300));
     }
 
     private GameService.GameSession game() {

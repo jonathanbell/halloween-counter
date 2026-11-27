@@ -100,7 +100,8 @@ public class GameService {
         final List<Long> reactionsMs = new CopyOnWriteArrayList<>();
         final AtomicInteger score = new AtomicInteger();
         final AtomicLong lastTapRelay = new AtomicLong();
-        volatile ScheduledFuture<?> endTask;
+        // ScheduledFuture is thread-safe; volatile only publishes the reference
+        volatile ScheduledFuture<?> endTask; // NOSONAR java:S3077
 
         GameSession(WebSocketSession socket, String initials, GameSchedule schedule, long endsAt) {
             this.socket = socket;
@@ -295,7 +296,7 @@ public class GameService {
     private LeaderboardService.Placement persist(GameSession game, int score, @Nullable Integer avgMs) {
         if (game.shown.isEmpty()) return null;
         try {
-            return leaderboardService.record(Year.now().getValue(), game.sessionId, score, game.initials, avgMs);
+            return leaderboardService.save(Year.now(FreezeService.ZONE).getValue(), game.sessionId, score, game.initials, avgMs);
         } catch (Exception e) {
             log.warn("Leaderboard save failed for {} ({} pts)", game.initials, score, e);
             return null;
@@ -312,7 +313,10 @@ public class GameService {
     private void send(GameSession game, ObjectNode msg) {
         try {
             game.socket.sendMessage(new TextMessage(objectMapper.writeValueAsString(msg)));
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            // Usually the phone already closed the socket; the game carries on
+            log.debug("Send to {} failed", game.initials, e);
+        }
     }
 
     @PreDestroy

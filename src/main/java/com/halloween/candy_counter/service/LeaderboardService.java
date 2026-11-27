@@ -31,7 +31,7 @@ public class LeaderboardService {
 
     public record Placement(long scoreId, int rank) {}
 
-    public Placement record(int year, UUID sessionId, int score, String initials, @Nullable Integer avgMs) {
+    public Placement save(int year, UUID sessionId, int score, String initials, @Nullable Integer avgMs) {
         Event saved = eventRepository.save(Event.gameScore(year, sessionId, score, initials, avgMs));
 
         // Counted after the save, so a tie shares the better rank (ties do
@@ -44,7 +44,7 @@ public class LeaderboardService {
     }
 
     public List<Entry> top(int year, int limit) {
-        int capped = Math.max(1, Math.min(limit, MAX_LIMIT));
+        int capped = Math.clamp(limit, 1, MAX_LIMIT);
         return eventRepository.findLeaderboard(year, PageRequest.of(0, capped))
             .stream()
             .map(Entry::of)
