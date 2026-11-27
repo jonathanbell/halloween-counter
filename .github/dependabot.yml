@@ -4,6 +4,12 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Conventional commits, stated rather than guessed from history:
+    # build(deps): ... and build(deps-dev): ...
+    commit-message:
+      prefix: build
+      prefix-development: build
+      include: scope
     # Let a fresh release prove itself before it can be auto-merged.
     # Security updates skip the wait.
     cooldown:
@@ -37,6 +43,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # ci(deps): ...
+    commit-message:
+      prefix: ci
+      include: scope
     cooldown:
       default-days: 7
     groups:
