@@ -418,6 +418,13 @@ row uses a synthetic 6pm PDT timestamp so it lands in one histogram bucket.
 Two suites. Both must pass before committing. Runners, including
 single-test selection, are in **Commands** above.
 
+CI (`.github/workflows/ci.yml`) runs both suites plus lint and build on
+every PR and push to `main`; a ruleset makes them required for PRs (admins
+bypass, so direct pushes still work). Dependabot (`.github/dependabot.yml`)
+opens weekly minor/major PRs, skips patches, and waits 7 days after a
+release. Its PRs auto-merge once CI passes, except majors, the `three`
+group (no test renders the 3D scene) and maintainer changes.
+
 **Backend** - `./gradlew test` (78 tests, mocked only, no Spring context boot):
 
 ```

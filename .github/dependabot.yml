@@ -1,0 +1,39 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Let a fresh release prove itself before it can be auto-merged.
+    # Security updates skip the wait.
+    cooldown:
+      default-days: 7
+    # Minor and major only: patch bumps are noise. Security updates ignore
+    # this and arrive for any version.
+    allow:
+      - dependency-type: all
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
+    groups:
+      # No test renders the 3D scene, so these always wait for a human.
+      three:
+        patterns:
+          - three
+          - "@types/three"
+          - "@react-three/*"
+      minor:
+        applies-to: version-updates
+        update-types:
+          - minor
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns:
+          - "*"
