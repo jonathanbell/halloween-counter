@@ -2,7 +2,7 @@
 # so `src/main/resources/static` never has to live in source control.
 #
 #   frontend  node   npm ci + vite build            -> /app/dist
-#   builder   maven  dist -> resources/static, jar  -> /app/target/*.jar
+#   builder   gradle dist -> resources/static, jar  -> /app/build/libs/*.jar
 #   runtime   jre    the jar only
 FROM node:24-alpine AS frontend
 WORKDIR /app
@@ -17,26 +17,30 @@ COPY public ./public
 COPY src ./src
 RUN npm run build
 
-FROM maven:3.9.9-eclipse-temurin-21 AS builder
+FROM azul/zulu-openjdk:21 AS builder
 WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline
+
+# Build files first: the wrapper download and dependencies stay cached
+# until the build itself changes
+COPY gradlew settings.gradle.kts build.gradle.kts ./
+COPY gradle ./gradle
+RUN ./gradlew dependencies --no-daemon -q
 COPY src ./src
 
 # Spring Boot serves the bundle straight out of static resources, so drop
 # Vite's output in before packaging
 COPY --from=frontend /app/dist ./src/main/resources/static
-RUN mvn clean package -DskipTests
+RUN ./gradlew bootJar --no-daemon
 
-FROM eclipse-temurin:21-jre
+FROM azul/zulu-openjdk:21-jre
 WORKDIR /app
 
-# curl is not in the temurin JRE image; needed for HEALTHCHECK
+# curl is not in the Zulu JRE image; needed for HEALTHCHECK
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the jar and start script
-COPY --from=builder /app/target/candy-counter-*.jar /app/app.jar
+COPY --from=builder /app/build/libs/candy-counter-*.jar /app/app.jar
 
 # Environment vars for server. ADMIN_TOKEN / SETTINGS_TOKEN deliberately
 # have no defaults here: baking empty strings would override the app's

@@ -4,7 +4,7 @@ Spring Boot + Vite/React counter and game projected onto a garage door Halloween
 
 ## Prerequisites
 
-- Java 21 (Temurin/Corretto) + Maven 3.9+
+- Java 21 (Azul Zulu); Gradle comes from the wrapper (`./gradlew`)
 - Node 20+ / npm
 - Docker (deployment and `make smoke` only)
 - Postgres (production only, provided by the server; local dev uses
@@ -15,7 +15,7 @@ Spring Boot + Vite/React counter and game projected onto a garage door Halloween
 ```bash
 git clone <repo> && cd halloween-counter
 npm install          # frontend deps
-# Maven resolves Java deps on first run - nothing else to install
+# Gradle resolves Java deps on first run - nothing else to install
 ```
 
 ## Development
@@ -23,7 +23,7 @@ npm install          # frontend deps
 Terminal A (backend, H2 in-memory, empty each restart):
 
 ```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=local
+./gradlew bootRun --args='--spring.profiles.active=local'
 # http://localhost:8080
 ```
 
@@ -40,14 +40,14 @@ Full-stack check without Vite (what production serves):
 
 ```bash
 npm run bundle    # build + replace src/main/resources/static (gitignored)
-mvn spring-boot:run -Dspring-boot.run.profiles=local
+./gradlew bootRun --args='--spring.profiles.active=local'
 # http://localhost:8080
 ```
 
 Verify before committing:
 
 ```bash
-mvn test            # backend unit tests (60)
+./gradlew test     # backend unit tests (78)
 npm run test:run    # frontend unit tests (95, vitest + jsdom)
 npm run lint        # ESLint
 npm run build       # TS check + bundle
@@ -100,7 +100,7 @@ make logs            # tail the app logs on the server
 make tokens          # print the live admin/settings tokens
 ```
 
-Three-stage Docker build (Vite -> Maven -> JRE 21, so the frontend bundle
+Three-stage Docker build (Vite -> Gradle -> JRE 21, so the frontend bundle
 is built in the image rather than committed), images tagged by git sha. The
 server (`francesco`, a shared box) owns all runtime config - its Caddy
 terminates TLS, its host PostgreSQL holds the data, and secrets live in its

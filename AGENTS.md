@@ -12,9 +12,9 @@ it fully before working on this repository.
 
 | Task                     | Command                                                     |
 | ------------------------ | ----------------------------------------------------------- |
-| Backend (H2, port 8080)  | `mvn spring-boot:run -Dspring-boot.run.profiles=local`      |
+| Backend (H2, port 8080)  | `./gradlew bootRun --args='--spring.profiles.active=local'` |
 | Frontend dev (port 5173) | `npm run dev`                                                |
-| Backend tests            | `mvn test`                                                   |
+| Backend tests            | `./gradlew test`                                             |
 | Frontend tests           | `npm run test:run`                                           |
 | Lint                     | `npm run lint`                                               |
 | Typecheck + build        | `npm run build`                                              |
@@ -27,18 +27,16 @@ it fully before working on this repository.
 Running one test:
 
 ```bash
-mvn test -Dtest=GameServiceTest                     # one class
-mvn test -Dtest='GameServiceTest#secondStartGameDenied'  # one method
+./gradlew test --tests GameServiceTest                      # one class
+./gradlew test --tests 'GameServiceTest.secondStartDenied'  # one method
 
 npx vitest run src/test/theme.test.ts               # one file
 npx vitest run -t 'renders all three nav tabs'      # one test by name
 npx vitest                                           # watch mode
 ```
 
-> A misspelled `-Dtest=` selector reports `Tests run: 0` **and**
-> `BUILD SUCCESS`. Maven does not fail on a selector that matches nothing,
-> so check the count, not the exit code. `#setUp` matches nothing either -
-> only `@Test` methods are selectable.
+> A `--tests` filter that matches nothing fails the build with "No tests
+> found for given includes". Only `@Test` methods are selectable.
 
 ---
 
@@ -52,7 +50,7 @@ handling increment/state/SSE. It was rewritten as a Spring Boot application:
 3. Database: `events` (all activity), `settings` (year config), `tokens`
 4. Frontend rebuilt: SSE client, Recharts stats, and Graveyard Bonk - a
    three.js reaction game played on phones and broadcast on the garage door
-5. Dockerfile: multi-stage (Vite build → Maven build → JRE runtime)
+5. Dockerfile: multi-stage (Vite build → Gradle build → JRE runtime)
 6. A shared CSS token + primitives layer used by React *and* the static
    admin pages
 
@@ -104,7 +102,7 @@ Browser surfaces:
 The frontend bundles into Spring Boot's static resources
 (`src/main/resources/static`) and is served directly by Spring Boot. That
 directory is **build output, not source**: it is gitignored, and the
-Dockerfile builds it in a `node` stage that hands `dist` to the Maven
+Dockerfile builds it in a `node` stage that hands `dist` to the Gradle
 stage. Locally, `npm run bundle` fills it for a prod-like run on :8080.
 Vite's `npm run dev` serves the same app during frontend iteration - but
 the backend must be running on 8080 for any API call to work.
@@ -420,7 +418,7 @@ row uses a synthetic 6pm PDT timestamp so it lands in one histogram bucket.
 Two suites. Both must pass before committing. Runners, including
 single-test selection, are in **Commands** above.
 
-**Backend** - `mvn test` (78 tests, mocked only, no Spring context boot):
+**Backend** - `./gradlew test` (78 tests, mocked only, no Spring context boot):
 
 ```
 src/test/java/com/halloween/candy_counter
@@ -478,7 +476,7 @@ it (or call `shutdown()`) or the timer outlives the test.
 
 ## 7. Local Development
 
-Terminal A: `mvn spring-boot:run -Dspring-boot.run.profiles=local`
+Terminal A: `./gradlew bootRun --args='--spring.profiles.active=local'`
 (H2 in-memory; data is empty on every restart)
 
 Terminal B: `npm run dev` (Vite dev server on :5173)
@@ -494,7 +492,7 @@ Dev tokens (from `application-local.yml`): `dev-admin-token` /
 
 The off-season freeze is **off** in the local profile, so writes work every
 day of the year. To work on the frozen pages, add
-`-Dspring-boot.run.arguments=--freeze.enabled=true` to the backend command.
+`--freeze.enabled=true` inside the backend command's `--args`.
 From Nov 1 to Dec 31 that shows the sealed state, where the unlock is
 refused too.
 
@@ -505,8 +503,9 @@ refused too.
 ```
 Dockerfile 3-stage:
   1. node:24-alpine                   → npm ci + vite build → dist
-  2. maven:3.9.9-eclipse-temurin-21   → dist → resources/static, then jar
-  3. eclipse-temurin:21-jre           → runtime only
+  2. azul/zulu-openjdk:21              → dist → resources/static, then
+                                        ./gradlew bootJar
+  3. azul/zulu-openjdk:21-jre         → runtime only
 ```
 
 Stage 1 is why the bundle is not in git. `.dockerignore` excludes
@@ -680,11 +679,11 @@ Day-to-day loop, the server's shape, and failure modes: `docs/deployment.md`.
 ## 11. Getting Started Checklist for a New Coding Agent
 
 - [ ] Read this file, then `docs/api.md` for anything API-shaped
-- [ ] Terminal A: `mvn spring-boot:run -Dspring-boot.run.profiles=local`
+- [ ] Terminal A: `./gradlew bootRun --args='--spring.profiles.active=local'`
 - [ ] Terminal B: `npm run dev`
 - [ ] Sanity check: `curl 'http://localhost:8080/api/state?year=2026'`
 - [ ] Make the change; add or update a test alongside it
-- [ ] `mvn test` and `npm run test:run` - both must be green
+- [ ] `./gradlew test` and `npm run test:run` - both must be green
 - [ ] `npm run lint` and `npm run build`
 
 Nothing to commit for the bundle: `src/main/resources/static` is gitignored

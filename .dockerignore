@@ -1,11 +1,12 @@
 # Keep the build context small and deterministic. Everything the image
-# needs is either declared in package.json / pom.xml or produced by a
+# needs is either declared in package.json / build.gradle.kts or produced by a
 # build stage, so no build output belongs in the context.
 
 .git
 .github
 node_modules
-target
+build
+.gradle
 dist
 
 # Produced by the frontend stage. A local `npm run bundle` copy in the

@@ -1,6 +1,7 @@
 {
   "words": [
     "Avenir",
+    "azul",
     "Configurer",
     "cooldowns",
     "Creepster",
@@ -21,8 +22,9 @@
     "springframework",
     "stringtype",
     "tabular",
-    "temurin",
+    "gradlew",
     "Vite's",
-    "vitest"
+    "vitest",
+    "zulu"
   ]
 }

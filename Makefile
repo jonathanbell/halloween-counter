@@ -45,7 +45,7 @@ help:
 	@echo "make tokens          print the live admin/settings tokens"
 	@echo "make reset-year YEAR=x  delete a year's events (backup in backups/)"
 
-# Only for local prod-like runs (`mvn spring-boot:run` on :8080). The image
+# Only for local prod-like runs (`./gradlew bootRun` on :8080). The image
 # builds its own frontend, so `make image` does not need this.
 bundle:
 	npm run bundle

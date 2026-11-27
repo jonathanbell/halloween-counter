@@ -74,7 +74,7 @@ loaded on the box until pruned - keep the last known-good one.
   tests cannot catch that class of bug. Run it before first-of-season
   deploys and after dependency changes.
 - Frontend changes need nothing extra: the image's first stage runs
-  `npm ci && npm run build` and hands the result to the Maven stage, so
+  `npm ci && npm run build` and hands the result to the Gradle stage, so
   every deploy ships the frontend that is in the tree.
 
 ## What exists on the box (one-time setup, done server-side)

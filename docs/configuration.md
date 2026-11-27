@@ -56,8 +56,7 @@ itself, not a way to test.
 To see the frozen pages locally:
 
 ```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=local \
-  -Dspring-boot.run.arguments=--freeze.enabled=true
+./gradlew bootRun --args='--spring.profiles.active=local --freeze.enabled=true'
 ```
 
 ## Profiles (`src/main/resources`)
