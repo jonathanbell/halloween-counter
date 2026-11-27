@@ -192,6 +192,10 @@ and the static admin pages. The conventions - token discipline, the
 
 ## Repo notes
 
+- Spring Boot 3.5's free (OSS) support ended 2026-06-30, so the app no
+  longer gets security fixes. Moving to Boot 4 is a real migration
+  (Spring Framework 7, Jackson 3, Flyway wiring); do it before a Halloween
+  if at all.
 - `public/fonts/digital-7.ttf` is freeware licensed for home use only
   (see the licence beside it). The app is served publicly, which is
   arguably outside that grant; a licensed or open seven-segment face would
